@@ -20,13 +20,19 @@ export function friendly(e) {
 }
 
 let lastUid = null;
+function setAccess(acc) {
+  S.perms = new Set((acc && acc.permissions) || []);
+  S.roles = (acc && acc.roles) || [];
+  S.superadmin = !!(acc && acc.superadmin);
+  S.isAdmin = S.perms.size > 0;          // anyone holding at least one permission is staff
+}
 export async function loadMe() {
   const s = auth.getSession();
-  if (!s) { S.profile = null; S.isAdmin = false; $('#adminLink').style.display = 'none'; setAuth(false); return; }
+  if (!s) { S.profile = null; setAccess(null); $('#adminLink').style.display = 'none'; setAuth(false); return; }
   try {
-    const [p, a] = await Promise.all([db.select('profiles', '*', {id: 'eq.' + s.user.id}), db.select('app_admins', 'user_id')]);
-    S.profile = p[0] || null; S.isAdmin = a.length > 0;
-  } catch { S.profile = null; S.isAdmin = false; }
+    const [p, acc] = await Promise.all([db.select('profiles', '*', {id: 'eq.' + s.user.id}), db.rpc('my_access').catch(() => null)]);
+    S.profile = p[0] || null; setAccess(acc);
+  } catch { S.profile = null; setAccess(null); }
   $('#adminLink').style.display = S.isAdmin ? '' : 'none';
   setAuth(true, (S.profile && S.profile.full_name) || (s.user.email || 'Member').split('@')[0]);
 }
