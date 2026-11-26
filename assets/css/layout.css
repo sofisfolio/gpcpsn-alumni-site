@@ -1,0 +1,29 @@
+/* header */
+header{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.92);backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);border-bottom:1px solid transparent;transition:box-shadow .3s,border-color .3s}
+header.sc{box-shadow:0 10px 30px -18px rgba(11,28,62,.35);border-color:var(--line)}
+.nav{height:82px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{display:flex;align-items:center;gap:12px;color:var(--navy);min-width:0}
+.brand img{height:58px;width:auto;transition:transform .4s var(--e)}
+.brand:hover img{transform:rotate(-4deg) scale(1.04)}
+.brand b{display:block;font-size:.96rem;white-space:nowrap;letter-spacing:-.01em}
+.brand small{display:block;color:var(--muted);font-size:.74rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.links{display:flex;align-items:center;gap:2px}
+.links a.nl{color:var(--navy);padding:.55rem .75rem;border-radius:999px;font-size:.88rem;font-weight:600;transition:background .2s,color .2s;white-space:nowrap;position:relative}
+.links a.nl:hover{color:var(--em-d);background:var(--em-l)}
+.links a.nl.on{color:var(--navy);background:#EAF0FB}
+.links .btn{margin-left:10px}
+.hdr-r{display:flex;align-items:center;gap:12px}
+.me{display:flex;align-items:center;gap:8px;color:var(--navy);font-weight:700;font-size:.86rem;white-space:nowrap}
+.me .av{width:36px;height:36px;font-size:.78rem}
+.burger{display:none;width:44px;height:44px;border-radius:14px;background:var(--em-l);position:relative;flex:none}
+.burger span{position:absolute;left:12px;right:12px;height:2px;background:var(--navy);border-radius:2px;transition:.3s}
+.burger span:nth-child(1){top:15px}.burger span:nth-child(2){top:21px}.burger span:nth-child(3){top:27px}
+.burger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.burger.open span:nth-child(2){opacity:0}
+.burger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+
+/* views */
+.view{animation:vin .6s var(--e)}
+@keyframes vin{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+/* Migration fix: clip on a wrapper (not <body>, whose overflow is promoted to the viewport) so the off-canvas menu cannot create sideways scroll. */
+.page-clip{overflow-x:clip}
