@@ -178,6 +178,15 @@ select t.exec('anon cannot read articles table', null, 'anon', $q$select * from 
 select t.exec('author cannot edit a published article', :A, 'authenticated', $q$update public.articles set content='silent change' where id='c0000000-0000-0000-0000-000000000001'$q$, 'rows0');
 select t.exec('author cannot delete a published article', :A, 'authenticated', $q$delete from public.articles where id='c0000000-0000-0000-0000-000000000001'$q$, 'rows0');
 
+
+-- ------------------------------------------------------------------ rejected members can resubmit
+update public.profiles set verification_status = 'rejected', verification_note = 'enrolment number not found' where id = :B;
+select t.exec('rejected member saving unrelated details stays rejected', :B, 'authenticated', $q$update public.profiles set bio='updated bio' where id='a0000000-0000-0000-0000-000000000002'$q$, 'ok');
+select t.exec('  ...still rejected', null, 'postgres', $q$select 1 from public.profiles where id='a0000000-0000-0000-0000-000000000002' and verification_status='rejected'$q$, 'count:1');
+select t.exec('rejected member correcting enrolment goes back to pending', :B, 'authenticated', $q$update public.profiles set enrollment_no='CE-2016-09' where id='a0000000-0000-0000-0000-000000000002'$q$, 'ok');
+select t.exec('  ...now pending for review', null, 'postgres', $q$select 1 from public.profiles where id='a0000000-0000-0000-0000-000000000002' and verification_status='pending'$q$, 'count:1');
+select t.exec('rejected member still cannot set status directly', :B, 'authenticated', $q$update public.profiles set verification_status='verified' where id='a0000000-0000-0000-0000-000000000002'$q$, 'error:administrator');
+
 -- ------------------------------------------------------------------ reports, contact, site content
 select t.exec('verified member reports a job', :C, 'authenticated', $q$insert into public.content_reports(reporter_id,entity_type,entity_id,reason) values ('a0000000-0000-0000-0000-000000000003','job','b0000000-0000-0000-0000-000000000001','Looks like a scam')$q$, 'ok');
 select t.exec('duplicate report blocked', :C, 'authenticated', $q$insert into public.content_reports(reporter_id,entity_type,entity_id,reason) values ('a0000000-0000-0000-0000-000000000003','job','b0000000-0000-0000-0000-000000000001','Again')$q$, 'error:duplicate key');
@@ -232,6 +241,13 @@ select t.exec('storage: anon cannot upload', null, 'anon', $q$insert into storag
 select t.exec('storage: member lists only own files', :A, 'authenticated', $q$select * from storage.objects where bucket_id='avatars'$q$, 'count:1');
 select t.exec('storage: member cannot delete another member file', :C, 'authenticated', $q$delete from storage.objects where bucket_id='avatars'$q$, 'rows0');
 select t.exec('storage: admin can delete member image (moderation)', :AD, 'authenticated', $q$delete from storage.objects where bucket_id='avatars'$q$, 'ok');
+
+
+-- ------------------------------------------------------------------ admin member list
+select t.exec('anon cannot call admin_list_members', null, 'anon', $q$select * from public.admin_list_members()$q$, 'error:permission denied');
+select t.exec('member cannot list members (and cannot read emails)', :A, 'authenticated', $q$select * from public.admin_list_members()$q$, 'error:not_admin');
+select t.exec('admin lists members with emails', :AD, 'authenticated', $q$select * from public.admin_list_members() where email like '%@example.test'$q$, 'count:4');
+select t.exec('admin filters by status', :AD, 'authenticated', $q$select * from public.admin_list_members('suspended')$q$, 'count:1');
 
 -- ------------------------------------------------------------------ report
 \echo

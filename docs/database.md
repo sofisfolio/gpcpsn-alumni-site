@@ -16,3 +16,8 @@ It found 4 real bugs before launch (invalid regex limits, slug function permissi
 Not yet tested: behaviour against the real Supabase Auth/Storage services (done in Phase 3 with real sign-ups).
 
 **Admins:** see `docs/admin-bootstrap.sql`.
+
+## Later migrations
+- 5: launch with Civil Engineering only ("Other" hidden).
+- 6: `admin_list_members(status)`: admin-only function that shows applicants' sign-up emails (emails are never readable otherwise).
+- 7: a rejected member who corrects batch year/department/enrolment number goes back to "pending" for re-review.

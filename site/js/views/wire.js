@@ -4,13 +4,15 @@ import {S,EMAIL_RE} from '../state.js';
 import {toast,openModal,closeModal,gate,setAuth,motion,bars,hooks,app,LOCK_ICON} from '../ui.js';
 import {auth,db} from '../lib/supa.js';
 import {friendly,loadMe} from '../services/auth.js';
+import {listAlumni,getAlumnus,isId} from '../services/directory.js';
+import {storage} from '../lib/supa.js';
 import {ALUMNI,JOBS,EVENTS,NEWS} from '../data/dev-sample.js';
 export function wire(p,arg){
   motion(app);bars(app);
   if(p==="about"&&arg){setTimeout(()=>{const t=document.getElementById(arg);if(t)t.scrollIntoView({behavior:"smooth",block:"start"})},120)}
   if(p==="home")homeWire();
   if(p==="alumni")alumniWire();
-  if(p==="profile")profileWire();
+  if(p==="profile")profileWire(arg);
   if(p==="jobs")jobsWire();
   if(p==="job")jobWire(arg);
   if(p==="post-job")postWire();
@@ -20,6 +22,7 @@ export function wire(p,arg){
   if(p==="blog")blogWire(arg);
   if(p==="login")loginWire(arg);
   if(p==="me")meWire();
+  if(p==="admin")adminWire();
 }
 
 /* home */
@@ -28,7 +31,17 @@ function homeWire(){
   const car=$("#car");
   $("#carL").onclick=()=>car.scrollBy({left:-320,behavior:"smooth"});
   $("#carR").onclick=()=>car.scrollBy({left:320,behavior:"smooth"});
-  loadStats();loadTestimonials();
+  loadStats();loadTestimonials();loadFeatured();
+}
+async function loadFeatured(){
+  try{
+    const rows=await db.select("featured_alumni_public","*",{order:"sort_order.asc",limit:"8"});
+    const sec=$("#featSec"),car=$("#car");if(!sec||!car||!rows.length)return;
+    car.innerHTML=rows.map(r=>{const img=r.avatar_path?storage.publicUrl("avatars",r.avatar_path):"";
+      return `<article class="card pcard reveal"><div class="ph" style="${img?`background-image:url('${esc(img)}');`:"background:linear-gradient(135deg,var(--em),var(--navy-2));display:grid;place-items:center;color:#fff;font-size:2.4rem;font-weight:800;"}">${img?"":esc(ini(r.full_name))}${r.industry?`<span class="tag n">${esc(r.industry)}</span>`:""}${r.graduation_year?`<span class="yr">BATCH ${esc(r.graduation_year)}</span>`:""}</div>
+      <div class="bd"><h3>${esc(r.full_name)}</h3><div class="meta">${esc([r.current_position,r.current_company].filter(Boolean).join(" · "))}</div><a class="more" href="#profile/${esc(r.id)}">View profile <span>→</span></a></div></article>`}).join("");
+    sec.style.display="";motion(car);
+  }catch{/* section stays hidden */}
 }
 async function loadStats(){
   try{
@@ -54,39 +67,92 @@ async function loadTestimonials(){
   }catch{/* section stays hidden */}
 }
 
-/* alumni directory */
-let alPage=1;const PAGE=6;
-function alumniWire(){
+/* alumni directory (real, from the database) */
+let alPage=1;const PAGE=9;
+const avatar=(a,size=300,extra="")=>`<div class="av" style="${a.img?`background-image:url('${esc(a.img)}');`:""}${extra}">${a.img?"":esc(ini(a.n))}</div>`;
+async function alumniWire(){
+  const grid=$("#alGrid");
+  $("#ct").textContent="Loading alumni…";$("#lm").style.display="none";
+  let ALL=[];
+  try{ALL=await listAlumni()}catch(e){$("#ct").textContent="";$("#alEmpty").classList.add("on");$("#alEmptyMsg").textContent=friendly(e);return}
+  if(!$("#alGrid"))return;                       // user navigated away while loading
+  const fill=(id,vals,fmt=x=>x)=>{const el=$("#"+id);vals.forEach(v=>el.insertAdjacentHTML("beforeend",`<option value="${esc(v)}">${esc(fmt(v))}</option>`))};
+  fill("fy",[...new Set(ALL.map(a=>a.y).filter(Boolean))].sort((a,b)=>b-a));
+  fill("fi",[...new Set(ALL.map(a=>a.ind).filter(Boolean))].sort());
+  fill("fc",[...new Set(ALL.map(a=>a.ctry).filter(Boolean))].sort());
   const f=()=>{
-    const q=$("#fq").value.trim().toLowerCase(),y=$("#fy").value,d=$("#fd").value,i=$("#fi").value,c=$("#fc").value,s=$("#fs").value;
-    let list=ALUMNI.filter(a=>a.pub&&(!y||a.y==y)&&(!d||a.d===d)&&(!i||a.ind===i)&&(!c||a.ctry===c)&&(!q||[a.n,a.co,a.city,a.r,a.ind].join(" ").toLowerCase().includes(q)));
-    list.sort((a,b)=>s==="new"?b.y-a.y:s==="old"?a.y-b.y:a.n.localeCompare(b.n));
+    const q=$("#fq").value.trim().toLowerCase(),y=$("#fy").value,i=$("#fi").value,c=$("#fc").value,s=$("#fs").value;
+    let list=ALL.filter(a=>(!y||a.y==y)&&(!i||a.ind===i)&&(!c||a.ctry===c)&&(!q||[a.n,a.co,a.city,a.r,a.ind,a.skills.join(" ")].join(" ").toLowerCase().includes(q)));
+    list.sort((a,b)=>s==="new"?(b.y||0)-(a.y||0):s==="old"?(a.y||0)-(b.y||0):a.n.localeCompare(b.n));
     const shown=list.slice(0,alPage*PAGE);
-    $("#alGrid").innerHTML=shown.map((a,k)=>`<article class="card person reveal d${k%3}">
-      <div style="display:flex;gap:14px;align-items:center"><div class="av" style="background-image:url('${U(a.ph,300)}')"></div><div><h3>${esc(a.n)}</h3><div class="meta">Batch ${a.y} · ${esc(a.d)}</div></div></div>
-      <div class="pill-list" style="margin-top:0"><span>${esc(a.r)}</span><span>${esc(a.ind)}</span></div>
-      <div style="font-size:.88rem;color:var(--muted)">${esc(a.co)} · 📍 ${esc(a.city)}</div>
-      <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;border-top:1px dashed var(--line);padding-top:14px"><a class="more" href="#profile/${a.id}">View profile <span>→</span></a><button class="chip" data-save="${a.id}" style="font-size:.78rem;padding:.35rem .7rem">${S.saved[a.id]?'Saved ★':'Save ☆'}</button></div>
+    grid.innerHTML=shown.map((a,k)=>`<article class="card person reveal d${k%3}">
+      <div style="display:flex;gap:14px;align-items:center">${avatar(a)}<div><h3>${esc(a.n)}</h3><div class="meta">${a.y?"Batch "+esc(a.y)+" · ":""}${esc(a.d)}</div></div></div>
+      <div class="pill-list" style="margin-top:0">${[a.r,a.ind].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join("")}</div>
+      <div style="font-size:.88rem;color:var(--muted)">${esc([a.co,a.city].filter(Boolean).join(" · "))}</div>
+      <div style="margin-top:auto;border-top:1px dashed var(--line);padding-top:14px"><a class="more" href="#profile/${esc(a.id)}">View profile <span>→</span></a></div>
     </article>`).join("");
-    $("#ct").textContent=`Showing ${shown.length} of ${list.length} alumni`;
+    $("#ct").textContent=ALL.length?`Showing ${shown.length} of ${list.length} alumni`:"";
     $("#alEmpty").classList.toggle("on",!list.length);
+    $("#alEmptyMsg").textContent=ALL.length?"Try clearing a filter.":"No alumni have made their profile visible yet. Join the network and be one of the first.";
     $("#lm").style.display=shown.length<list.length?"":"none";
-    const chips=[];if(y)chips.push(["Batch "+y,"fy"]);if(d)chips.push([d,"fd"]);if(i)chips.push([i,"fi"]);if(c)chips.push([c,"fc"]);
-    $("#chipsAl").innerHTML=chips.map(x=>`<button class="chip on" data-clear="${x[1]}">${esc(x[0])} ✕</button>`).join("")||`<span class="count">Filter by batch, department, industry or country</span>`;
-    motion($("#alGrid"));
+    const chips=[];if(y)chips.push(["Batch "+y,"fy"]);if(i)chips.push([i,"fi"]);if(c)chips.push([c,"fc"]);
+    $("#chipsAl").innerHTML=chips.map(x=>`<button class="chip on" data-clear="${x[1]}">${esc(x[0])} ✕</button>`).join("")||`<span class="count">Filter by batch, industry or country</span>`;
+    motion(grid);
   };
-  ["fq","fy","fd","fi","fc","fs"].forEach(id=>$("#"+id).addEventListener("input",()=>{alPage=1;f()}));
+  ["fq","fy","fi","fc","fs"].forEach(id=>$("#"+id).addEventListener("input",()=>{alPage=1;f()}));
   $("#lm").onclick=()=>{alPage++;f()};
   $("#chipsAl").onclick=e=>{const b=e.target.closest("[data-clear]");if(!b)return;$("#"+b.dataset.clear).value="";alPage=1;f()};
-  $("#alGrid").onclick=e=>{const b=e.target.closest("[data-save]");if(!b)return;const id=b.dataset.save;S.saved[id]=!S.saved[id];b.textContent=S.saved[id]?"Saved ★":"Save ☆";toast(S.saved[id]?"Saved to your list":"Removed")};
-  alPage=1;
-  f();
+  alPage=1;f();
 }
 
-/* profile */
-function profileWire(){
-  const b=$("#connectBtn");
-  if(b)b.onclick=()=>gate("Connecting with alumni requires a signed-in account.",()=>{b.textContent="Request sent ✓";b.classList.replace("btn-em","btn-navy");toast("Connection request sent")});
+/* single profile */
+async function profileWire(id){
+  const box=$("#proBox");if(!box)return;
+  const missing=(t,m)=>{box.innerHTML=`<div class="wrap" style="padding:90px 0;text-align:center"><h2>${esc(t)}</h2><p style="margin:10px 0 22px">${esc(m)}</p><a class="btn btn-em" href="#alumni">Back to the directory</a></div>`};
+  let a=null;
+  try{a=await getAlumnus(id)}catch(e){return missing("Could not load this profile",friendly(e))}
+  if(!$("#proBox"))return;
+  if(!a)return missing("Profile not available","This profile is private or does not exist.");
+  document.title=a.n+" | GPCPSN";
+  const cover=a.cov||U("",2000);
+  const card=(k,inner)=>`<div class="card" style="padding:32px;margin-top:22px"><div class="kicker">${k}</div>${inner}</div>`;
+  const tl=rows=>`<div class="tl">${rows.map(e=>`<div><small>${esc(e[0])}</small><b>${esc(e[1])}</b><span>${esc(e[2])}</span></div>`).join("")}</div>`;
+  const where=[a.city,a.ctry].filter(Boolean).join(", ");
+  let contact;
+  if(a.contact&&(a.contact.contact_email||a.contact.phone)){
+    contact=`<button class="btn btn-em" id="showContact">Show contact details</button><div id="contactBox" style="display:none;margin-top:12px;word-break:break-word">${a.contact.contact_email?`<div><b>Email:</b> <a href="mailto:${esc(a.contact.contact_email)}">${esc(a.contact.contact_email)}</a></div>`:""}${a.contact.phone?`<div><b>Phone:</b> ${esc(a.contact.phone)}</div>`:""}</div>`;
+  }else if(!S.auth){
+    contact=`<a class="btn btn-line" href="#login">Sign in to see contact details</a>`;
+  }else contact=`<button class="btn btn-line" disabled>Contact details not shared</button>`;
+  box.innerHTML=`
+    <div class="cover" style="background-image:url('${esc(cover)}')"></div>
+    <div class="wrap">
+      <div class="pro-head reveal">
+        <div class="pro-photo" style="${a.img?`background-image:url('${esc(a.img)}');`:"display:grid;place-items:center;background:linear-gradient(135deg,var(--em),var(--navy-2));color:#fff;font-size:3rem;font-weight:800;"}">${a.img?"":esc(ini(a.n))}</div>
+        <div style="padding-bottom:10px">${a.y?`<span class="tag">Batch ${esc(a.y)}</span>`:""}<h1 style="margin-top:12px">${esc(a.n)}</h1><div class="sub">${a.headline||a.r||a.co?`<span>${esc(a.headline||[a.r,a.co].filter(Boolean).join(" at "))}</span>`:""}${where?`<span>📍 ${esc(where)}</span>`:""}<span>🎓 ${esc(a.d)}</span></div></div>
+      </div>
+      <div class="pro-grid">
+        <div class="reveal">
+          ${a.intro?card("Introduction",`<p style="font-size:1.07rem;color:#334155;white-space:pre-line">${esc(a.intro)}</p>`):""}
+          ${a.exp.length?card("Career",tl(a.exp)):""}
+          ${a.edu.length?card("Education",tl(a.edu)):""}
+          ${a.skills.length?card("Skills & expertise",`<div class="pill-list">${a.skills.map(x=>`<span>${esc(x)}</span>`).join("")}</div>`):""}
+          ${a.ach.length?card("Achievements",a.ach.map(x=>`<div class="ach">🏆 ${esc(x)}</div>`).join("")):""}
+        </div>
+        <aside class="side reveal d1"><div class="card" style="padding:28px">
+          ${a.co?`<div class="row"><div class="ic">${LOCK_ICON.replace(/width="28" height="28"/,'width="20" height="20"')}</div><div><small>Company</small><b>${esc(a.co)}</b></div></div>`:""}
+          ${where?`<div class="row"><div class="ic">📍</div><div><small>Location</small><b>${esc(where)}</b></div></div>`:""}
+          ${a.ind?`<div class="row"><div class="ic">▦</div><div><small>Industry</small><b>${esc(a.ind)}</b></div></div>`:""}
+          <div class="pri">${contact}
+            ${a.linkedin?`<a class="btn btn-line" href="${esc(a.linkedin)}" target="_blank" rel="noopener noreferrer">LinkedIn profile</a>`:""}
+            ${a.website?`<a class="btn btn-line" href="${esc(a.website)}" target="_blank" rel="noopener noreferrer">Website</a>`:""}</div>
+          <div class="privacy">Contact details are shown only if this alumnus chose to share them with signed-in members.</div>
+        </div></aside>
+      </div>
+      <div style="height:80px"></div>
+    </div>`;
+  const sc=$("#showContact");if(sc)sc.onclick=()=>{$("#contactBox").style.display="";sc.style.display="none"};
+  motion(box);
 }
 
 /* jobs */
@@ -271,11 +337,22 @@ function loginWire(arg){
   };
 }
 
+/* resize to <=512px JPEG on the device (also strips EXIF/GPS data) */
+async function toJpeg(file,max=512){
+  if(!/^image\/(jpeg|png|webp)$/.test(file.type)){const e=new Error("type");e.userMessage="Please choose a JPG, PNG or WebP image.";throw e}
+  if(file.size>15*1024*1024){const e=new Error("size");e.userMessage="That image is too large. Choose one under 15 MB.";throw e}
+  let bmp;try{bmp=await createImageBitmap(file)}catch{const e=new Error("decode");e.userMessage="That image could not be read.";throw e}
+  const k=Math.min(1,max/Math.max(bmp.width,bmp.height));
+  const c=document.createElement("canvas");c.width=Math.max(1,Math.round(bmp.width*k));c.height=Math.max(1,Math.round(bmp.height*k));
+  c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+  return new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("encode")),"image/jpeg",0.85));
+}
+
 /* my profile */
 const STATUS={
   pending:["Awaiting verification","The alumni cell will check your details and verify you. Until then you can complete your profile, but it is not listed and you cannot post jobs or register for events."],
   verified:["Verified alumnus","Your profile follows the visibility you choose below."],
-  rejected:["Verification needs attention","Please correct your details and save again."],
+  rejected:["Verification needs attention","Please correct your batch year or enrolment number below and save: you will go back in the queue to be reviewed again."],
   suspended:["Account suspended","Please contact the alumni cell."]
 };
 async function meWire(){
@@ -296,6 +373,7 @@ async function meWire(){
     <h2 style="font-size:1.5rem;margin-bottom:6px">My profile</h2>
     <p style="margin-bottom:18px">Signed in as <b>${esc(s.user.email)}</b></p>
     <div class="g-form">
+      <div class="full" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap"><div id="avPrev" class="av" style="width:84px;height:84px;font-size:1.4rem;${p.avatar_path?`background-image:url('${esc(storage.publicUrl("avatars",p.avatar_path))}')`:""}">${p.avatar_path?"":esc(ini(p.full_name||"?"))}</div><div><label for="avFile">Profile photo</label><input id="avFile" type="file" accept="image/jpeg,image/png,image/webp"><div><small id="avMsg" role="status" style="color:var(--muted)">JPG, PNG or WebP. Resized on your device; location data in the photo is removed.</small></div></div></div>
       <div class="full"><label>Full name *</label><input class="field" name="full_name" maxlength="120" value="${v(p.full_name)}"><div class="err"></div></div>
       <div><label>Graduation year</label><input class="field" name="graduation_year" type="number" min="1950" max="2100" value="${v(p.graduation_year)}"></div>
       <div><label>Enrolment / seat number</label><input class="field" name="enrollment_no" maxlength="40" value="${v(p.enrollment_no)}"></div>
@@ -319,6 +397,22 @@ async function meWire(){
     </div>
   </form>`;
   const f=$("#fMe");
+  $("#avFile").onchange=async e=>{
+    const file=e.target.files[0];if(!file)return;const msg=$("#avMsg");
+    try{
+      msg.textContent="Uploading…";
+      const blob=await toJpeg(file);
+      const path=p.id+"/avatar-"+Date.now().toString(36)+".jpg";
+      await storage.upload("avatars",path,blob);
+      const old=S.profile.avatar_path;
+      const rows=await db.update("profiles",{id:"eq."+p.id},{avatar_path:path});
+      if(rows&&rows[0])S.profile=rows[0];
+      if(old&&old!==path){storage.remove("avatars",old).catch(()=>{})}
+      const pv=$("#avPrev");pv.style.backgroundImage=`url('${storage.publicUrl("avatars",path)}')`;pv.textContent="";
+      msg.textContent="Photo updated.";
+    }catch(err){msg.textContent=err&&err.userMessage?err.userMessage:friendly(err)}
+    e.target.value="";
+  };
   const setErr=(el,ok,msg)=>{el.classList.toggle("bad",!ok);const er=el.parentElement.querySelector(".err");if(er)er.textContent=ok?"":msg};
   f.onsubmit=async e=>{
     e.preventDefault();let ok=true;
@@ -345,6 +439,53 @@ async function meWire(){
       if(rows&&rows[0]&&rows[0].verification_status!==p.verification_status)hooks.route();else msg.textContent="Saved";
     }catch(err){msg.textContent=/check constraint|violates/i.test(err.message)?"Some details are not valid. Please check the highlighted fields.":friendly(err)}
     finally{btn.disabled=false}
+  };
+}
+
+/* administrator: verify alumni */
+async function adminWire(){
+  const box=$("#adBox");if(!box)return;
+  if(!auth.getSession()){box.innerHTML=`<p>Please <a class="more" href="#login">sign in</a> as an administrator.</p>`;return}
+  if(!S.isAdmin){box.innerHTML=`<p>This page is for administrators only.</p>`;return}
+  let tab="pending";
+  const TABS=[["pending","Waiting"],["verified","Verified"],["rejected","Rejected"],["suspended","Suspended"],["all","Everyone"]];
+  const shell=()=>{box.innerHTML=`<div class="chips" id="adTabs" style="margin-bottom:18px">${TABS.map(t=>`<button class="chip ${t[0]===tab?"on":""}" data-t="${t[0]}">${t[1]}</button>`).join("")}</div><div id="adList"><p>Loading…</p></div>`};
+  const load=async()=>{
+    const list=$("#adList");
+    try{
+      const rows=await db.rpc("admin_list_members",{p_status:tab==="all"?null:tab});
+      if(!$("#adList"))return;
+      if(!rows.length){list.innerHTML=`<p>${tab==="pending"?"Nobody is waiting for verification.":"Nobody here."}</p>`;return}
+      list.innerHTML=rows.map(r=>`<article class="card" style="padding:20px 24px;margin-bottom:14px" data-id="${esc(r.id)}">
+        <div style="display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start">
+          <div><h3 style="font-size:1.1rem">${esc(r.full_name||"(no name)")} <span class="tag" style="vertical-align:middle">${esc(r.verification_status)}</span></h3>
+            <div style="color:var(--muted);font-size:.9rem;margin-top:4px">${esc(r.email)} · Batch ${esc(r.graduation_year??"?")} · Enrolment: ${esc(r.enrollment_no||"not given")}${r.current_company?" · "+esc(r.current_company):""}${r.city?" · "+esc(r.city):""}</div>
+            <div style="color:var(--muted);font-size:.82rem;margin-top:2px">Registered ${esc(new Date(r.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}))}${r.verification_note?` · Note: ${esc(r.verification_note)}`:""}</div></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${r.verification_status!=="verified"?`<button class="btn btn-em btn-sm" data-act="verified">${r.verification_status==="suspended"?"Reinstate":"Verify"}</button>`:""}
+            ${r.verification_status==="pending"||r.verification_status==="verified"?`<button class="btn btn-line btn-sm" data-act="rejected">Reject</button>`:""}
+            ${r.verification_status==="verified"?`<button class="btn btn-line btn-sm" data-act="suspended">Suspend</button>`:""}
+          </div></div></article>`).join("");
+    }catch(err){list.innerHTML=`<p>${esc(friendly(err))}</p>`}
+  };
+  shell();load();
+  box.onclick=e=>{
+    const t=e.target.closest("[data-t]");
+    if(t){tab=t.dataset.t;shell();load();return}
+    const b=e.target.closest("[data-act]");if(!b)return;
+    const id=b.closest("[data-id]").dataset.id,act=b.dataset.act;
+    if(!isId(id))return;
+    const need=act!=="verified";
+    openModal(`<h2 style="font-size:1.35rem">${act==="verified"?"Verify this alumnus?":act==="rejected"?"Reject this registration":"Suspend this account"}</h2>
+      <form id="adForm" style="margin-top:14px"><label for="adNote">${need?"Reason (the member will see this) *":"Note (optional)"}</label><textarea class="field" id="adNote" rows="3" maxlength="500"></textarea><div class="err" id="adErr"></div>
+      <div style="display:flex;gap:10px;margin-top:16px"><button class="btn btn-em" type="submit">Confirm</button><button class="btn btn-line" type="button" id="adCancel">Cancel</button></div></form>`);
+    $("#adCancel").onclick=closeModal;
+    $("#adForm").onsubmit=async ev=>{
+      ev.preventDefault();const note=$("#adNote").value.trim();
+      if(need&&note.length<3){$("#adErr").textContent="Please give a short reason.";return}
+      try{await db.update("profiles",{id:"eq."+id},{verification_status:act,verification_note:note||null});closeModal();toast("Updated");load()}
+      catch(err){$("#adErr").textContent=friendly(err)}
+    };
   };
 }
 

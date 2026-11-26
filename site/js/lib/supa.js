@@ -143,4 +143,9 @@ export const storage = {
     });
     return parse(res);
   },
+  async remove(bucket, path) {
+    const t = await token();
+    if (!t) return;
+    await fetch(URL_ + '/storage/v1/object/' + bucket + '/' + path.split('/').map(encodeURIComponent).join('/'), {method: 'DELETE', headers: {apikey: KEY, Authorization: 'Bearer ' + t}});
+  },
 };

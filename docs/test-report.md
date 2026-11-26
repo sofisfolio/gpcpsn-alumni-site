@@ -95,3 +95,12 @@ Authentication, email delivery, RLS/permissions, storage, moderation, admin, rea
   testimonial text escaped, real numbers on the home page, no invented content.
 - `tests/smoke.cjs`: 70/70 pass (the six pages that intentionally differ from the prototype are now checked for absence of invented content).
 - **Not yet verified:** the real Supabase Auth service. Verified live only when the owner registers on the deployed site (checked afterwards by SQL).
+
+## Phase 3b (directory, profile pages, photo upload, admin verification)
+- `tests/members.e2e.cjs`: 32/32 pass (3 consecutive runs), real browser against a **mock** Supabase: real directory with data-driven filters, escaping of hostile names,
+  profile pages (bad id, private/unknown profile give the same page), contact details only for signed-in members, photo resize + upload to the member's own folder + old file removed,
+  non-images refused, admin list with emails, reject needs a reason, verify, non-admins and signed-out visitors blocked.
+- `tests/db/run.sh`: 147/147 pass (adds admin member list, resubmission after rejection).
+- `tests/smoke.cjs`: 74/74. `tests/auth.e2e.cjs`: 32/32.
+- Still sample content (replaced in Phases 4-7): home stories/news/jobs/events and the jobs/events/news pages. The site is marked `noindex` until launch.
+- **Not yet verified on the real service:** sign-up/sign-in, photo upload, admin actions (needs the owner's account; see docs/auth-setup.md).

@@ -38,3 +38,7 @@ Legend: [x] done and verified, [~] partly, [ ] not started, [!] needs the owner.
 ## Change log
 - 2026-11-26 Cloudflare production branch set to `phase-1-foundation`; build triggered.
 - 2026-11-26 v0.1.0: migrated prototype v17 into a multi-file static site; added dev preview banner; fixed off-canvas-menu sideways scroll and focusable hidden menu links; added tests and docs.
+
+## Launch reminders
+- [ ] Remove `<meta name="robots" content="noindex, nofollow">` from `site/index.html` and set `DEV_BANNER=false` in `site/js/config.js` once every page uses real data (after Phase 7).
+- [ ] Turn Confirm email back ON after custom email sending is set up (Phase 8).

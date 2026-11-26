@@ -13,4 +13,4 @@ trap 'su postgres -c "$PGBIN/pg_ctl -D $DIR/data -m immediate stop >/dev/null" |
 PSQL=(psql -h "$DIR" -p $PORT -U postgres -v ON_ERROR_STOP=1 -q -X)
 "${PSQL[@]}" -f "$HERE/00_supabase_stubs.sql"
 for f in "$ROOT"/supabase/migrations/*.sql; do echo "applying $(basename "$f")"; "${PSQL[@]}" -f "$f"; done
-"${PSQL[@]}" -f "$HERE/10_security_tests.sql" -P pager=off
+"${PSQL[@]}" -f "${TESTSQL:-$HERE/10_security_tests.sql}" -P pager=off
