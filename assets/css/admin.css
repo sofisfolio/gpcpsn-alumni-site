@@ -49,3 +49,5 @@ a.adm-stat:hover{border-color:var(--em-line);transform:translateY(-2px)}
   .adm-nav{flex-direction:row;overflow-x:auto;gap:6px;padding-bottom:2px}
   .adm-nav a{white-space:nowrap;padding:9px 12px}
 }
+.adm-edhead{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.adm-thumb{width:100%;max-width:420px;aspect-ratio:16/7;background-size:cover;background-position:center;border-radius:14px;border:1px solid var(--line);margin-bottom:10px}

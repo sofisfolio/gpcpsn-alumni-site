@@ -6,9 +6,10 @@ import {auth,db} from '../lib/supa.js';
 import {friendly,loadMe} from '../services/auth.js';
 import {listAlumni,getAlumnus,isId} from '../services/directory.js';
 import {storage} from '../lib/supa.js';
+import {toJpeg} from '../lib/image.js';
 import {listJobs,getJob,submitJob,myJobs,withdrawJob,deleteJob,reportJob,TYPE,MODE,lines} from '../services/jobs.js';
 import {adminWire} from './admin.js';
-import {ALUMNI,JOBS,EVENTS,NEWS} from '../data/dev-sample.js';
+import {eventsWire,eventWire,newsWire,blogWire,writeWire,loadHomeEvents,loadHomeNews} from './content-wire.js';
 export function wire(p,arg){
   motion(app);bars(app);
   if(p==="about"&&arg){setTimeout(()=>{const t=document.getElementById(arg);if(t)t.scrollIntoView({behavior:"smooth",block:"start"})},120)}
@@ -26,6 +27,7 @@ export function wire(p,arg){
   if(p==="me")meWire();
   if(p==="admin")adminWire(arg);
   if(p==="contact")contactWire();
+  if(p==="write")writeWire();
 }
 
 /* home */
@@ -34,7 +36,7 @@ function homeWire(){
   const car=$("#car");
   $("#carL").onclick=()=>car.scrollBy({left:-320,behavior:"smooth"});
   $("#carR").onclick=()=>car.scrollBy({left:320,behavior:"smooth"});
-  loadStats();loadTestimonials();loadFeatured();loadHomeJobs();
+  loadStats();loadTestimonials();loadFeatured();loadHomeJobs();loadHomeEvents();loadHomeNews();
 }
 const jobCard=(j,k=0)=>`<article class="card jobrow reveal d${k%2}">
       <div class="logo-b pic" role="img" aria-label="${esc(j.company)}">${esc(ini(j.company))}</div>
@@ -289,78 +291,6 @@ function postWire(){
   $$("input,textarea",f).forEach(el=>el.addEventListener("input",()=>el.classList.remove("bad")));
 }
 
-/* events */
-let evF="upcoming",evC="All";
-function eventsWire(){
-  const f=()=>{
-    const list=EVENTS.slice().sort((a,b)=>a.d.localeCompare(b.d)).filter(e=>(evF==="all"||(evF==="past")===dt(e.d).past)&&(evC==="All"||e.cat===evC));
-    $("#evList").innerHTML=list.map((e,k)=>{const f=dt(e.d),left=e.seats-e.taken;return `<article class="card ev reveal d${k%3}">
-      <div class="dt"><b>${f.day}</b><small>${f.mon}</small></div>
-      <div class="ov"><div class="bg" style="background-image:url('${U(e.img,900)}')"></div></div>
-      <span class="tag ${e.cat==='Alumni reunions'?'':'n'}" style="align-self:flex-start">${esc(e.cat)}</span>
-      <h3 style="margin-top:12px">${esc(e.t)}</h3>
-      <div class="info"><span>🕘 ${esc(e.time)}</span><span>📍 ${esc(e.venue)}</span><span>${left>0?left+' seats left':'Fully booked'}</span></div>
-      <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:10px"><a class="btn btn-navy btn-sm" href="#event/${e.id}">${f.past?'View recap':'Register now'}</a><a class="more" href="#event/${e.id}">Details <span>→</span></a></div></article>`}).join("");
-    $("#evEmpty").classList.toggle("on",!list.length);
-    motion($("#evList"));
-  };
-  $("#evc").onclick=e=>{const b=e.target.closest("[data-f]");if(!b)return;evF=b.dataset.f;$$("#evc .chip").forEach(x=>x.classList.toggle("on",x===b));f()};
-  $("#evcat").onclick=e=>{const b=e.target.closest("[data-cat]");if(!b)return;evC=b.dataset.cat;$$("#evcat .chip").forEach(x=>x.classList.toggle("on",x===b));f()};
-  f();
-}
-
-function eventWire(id){
-  const e=EVENTS.find(x=>x.id===id);if(!e)return;
-  const rb=$("#regBtn"),cb=$("#cancelBtn");
-  if(rb&&!rb.disabled)rb.onclick=()=>gate("Registration is for signed-in alumni.",()=>{
-    openModal(`<div class="kicker">Register</div><h2 style="font-size:1.55rem">${esc(e.t)}</h2><p style="margin:6px 0 20px">${esc(e.time)} · ${esc(e.venue)}</p>
-    <div class="g-form"><div class="full"><label for="att">Attendance</label><select class="field" id="att"><option>${e.online?'Virtual':'In person'}</option><option>${e.online?'In person':'Virtual'}</option></select></div>
-    <div class="full"><label for="att2">Number of attendees</label><input class="field" id="att2" type="number" min="1" max="4" value="1"></div>
-    <div class="full"><label for="attN">Notes (optional)</label><input class="field" id="attN"></div>
-    <div class="full"><button class="btn btn-em" id="confirm" style="width:100%">Confirm registration</button></div></div>`);
-    $("#confirm").onclick=()=>{
-      const n=Math.max(1,+$("#att2").value||1);
-      S.rsvp[e.id]=true;e.taken+=n;S.rsvpN++;closeModal();toast("Registration confirmed");hooks.route();
-    };
-  });
-  if(cb)cb.onclick=()=>{delete S.rsvp[e.id];e.taken=Math.max(0,e.taken-1);S.rsvpN=Math.max(0,S.rsvpN-1);toast("Registration cancelled");hooks.route()};
-}
-
-/* news */
-let nC="All";
-function newsWire(){
-  const f=()=>{
-    const q=$("#nq").value.trim().toLowerCase();
-    const list=NEWS.slice().sort((a,b)=>b.date.localeCompare(a.date)).filter(n=>(nC==="All"||n.cat===nC)&&(!q||[n.t,n.ex,n.author].join(" ").toLowerCase().includes(q)));
-    const feat=list.find(n=>n.feat)||list[0];
-    const rest=list.filter(n=>n!==feat);
-    $("#nFeat").innerHTML=feat?`<div class="ov" style="flex:1 1 460px;min-height:360px;border-radius:0"><div class="bg" style="background-image:url('${U(feat.img,1400)}')"></div><div style="position:absolute;top:20px;left:20px;z-index:3"><span class="tag">Featured</span></div></div><div style="flex:1 1 380px;padding:44px;display:flex;flex-direction:column;justify-content:center"><span class="tag n" style="align-self:flex-start">${esc(feat.cat)}</span><h2 style="margin:14px 0;font-size:2rem">${esc(feat.t)}</h2><p>${esc(feat.ex)}</p><div style="font-size:.86rem;color:var(--muted);margin:12px 0 22px">${esc(feat.author)} · ${dt(feat.date).full}</div><a class="btn btn-navy" href="#blog/${feat.id}" style="align-self:flex-start">Read article <span>→</span></a></div>`:"";
-    $("#nGrid").innerHTML=rest.map((n,k)=>`<article class="card nw reveal d${k%3}"><div class="ov"><div class="bg" style="background-image:url('${U(n.img,900)}')"></div></div><span class="tag ${k%2?'g':''}" style="align-self:flex-start">${esc(n.cat)}</span><h3 style="margin-top:12px">${esc(n.t)}</h3><div class="meta">${dt(n.date).short} · ${esc(n.author)}</div><p>${esc(n.ex)}</p><a class="more" href="#blog/${n.id}" style="margin-top:auto">Read more <span>→</span></a></article>`).join("");
-    $("#nct").textContent=`${list.length} articles`;
-    $("#nEmpty").classList.toggle("on",!list.length);
-    motion(app);
-  };
-  $("#nq").addEventListener("input",f);
-  $("#nc").onclick=e=>{const b=e.target.closest("[data-cat]");if(!b)return;nC=b.dataset.cat;$$("#nc .chip").forEach(x=>x.classList.toggle("on",x===b));f()};
-  $("#subForm").onsubmit=e=>{
-    e.preventDefault();
-    const v=e.target.querySelector("input").value.trim();
-    if(!EMAIL_RE.test(v)){toast("Enter a valid email");return}
-    e.target.innerHTML=`<span style="padding:12px 16px;color:var(--em-d);font-weight:700">Subscribed ✓</span>`;
-    toast("Subscribed to the newsletter");
-  };
-  f();
-}
-
-/* blog */
-function blogWire(id){
-  const n=NEWS.find(x=>x.id===id);if(!n)return;
-  $("#shareCopy").onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(location.href).catch(()=>{});toast("Link copied")};
-  $$("[data-share]").forEach(b=>b.onclick=()=>{const u=encodeURIComponent(location.href),t=encodeURIComponent(n.t);
-    const to={whatsapp:"https://wa.me/?text="+t+"%20"+u,linkedin:"https://www.linkedin.com/sharing/share-offsite/?url="+u}[b.dataset.share];
-    if(to)window.open(to,"_blank","noopener,noreferrer")});
-}
-
 /* login */
 function loginWire(arg){
   const show=p=>{$$("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.p===p));$$(".pane").forEach(x=>x.classList.toggle("on",x.id==="p-"+p))};
@@ -426,16 +356,6 @@ function loginWire(arg){
 }
 
 /* resize to <=512px JPEG on the device (also strips EXIF/GPS data) */
-async function toJpeg(file,max=512){
-  if(!/^image\/(jpeg|png|webp)$/.test(file.type)){const e=new Error("type");e.userMessage="Please choose a JPG, PNG or WebP image.";throw e}
-  if(file.size>15*1024*1024){const e=new Error("size");e.userMessage="That image is too large. Choose one under 15 MB.";throw e}
-  let bmp;try{bmp=await createImageBitmap(file)}catch{const e=new Error("decode");e.userMessage="That image could not be read.";throw e}
-  const k=Math.min(1,max/Math.max(bmp.width,bmp.height));
-  const c=document.createElement("canvas");c.width=Math.max(1,Math.round(bmp.width*k));c.height=Math.max(1,Math.round(bmp.height*k));
-  c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
-  return new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("encode")),"image/jpeg",0.85));
-}
-
 /* my profile */
 const STATUS={
   pending:["Awaiting verification","The alumni cell will check your details and verify you. Until then you can complete your profile, but it is not listed and you cannot post jobs or register for events."],
