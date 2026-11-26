@@ -97,6 +97,12 @@ const fillJoin = async (page, o) => {
     rec("approved testimonial is shown", await page.$eval("#testiSec", (e) => getComputedStyle(e).display !== "none") && (await page.textContent("#testi")).includes("A. Alumnus"));
     rec("testimonial text is escaped (no script injection)", !(await page.evaluate(() => window.__x)) && (await page.$("#testi img")) === null); await ctx.close(); }
 
+  /* batch year list: current year down to 1955 */
+  { const { ctx: cy, page: py } = await newPage(browser, makeBackend());
+    await py.goto("http://localhost:8095/#login/join"); await py.waitForSelector("#j_y");
+    const yrs = await py.$$eval("#j_y option", (o) => o.map((x) => +x.value)); const cur = new Date().getFullYear();
+    rec("batch years run from the current year down to 1955", yrs[0] === cur && yrs[yrs.length - 1] === 1955 && yrs.length === cur - 1955 + 1, yrs[0] + ".." + yrs[yrs.length - 1] + " (" + yrs.length + ")"); await cy.close(); }
+
   /* 3. sign-up without email confirmation -> signed in, profile page, pending banner */
   const b = makeBackend(); const { ctx, page, errs } = await newPage(browser, b);
   await fillJoin(page, { name: "Asha Kulkarni", email: "asha@example.test", pw: "Str0ng!pass", en: "CE-2014-17" });

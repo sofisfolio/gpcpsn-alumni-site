@@ -1,5 +1,5 @@
 /* Per-page behaviour (filters, forms, carousels). Demo behaviour is replaced feature-by-feature in later phases. */
-import {$,$$,esc,ini,U,P,dt,TODAY} from '../lib/util.js';
+import {$,$$,esc,ini,U,P,dt,TODAY,batchYears} from '../lib/util.js';
 import {S,EMAIL_RE} from '../state.js';
 import {toast,openModal,closeModal,gate,setAuth,motion,bars,hooks,app,LOCK_ICON} from '../ui.js';
 import {auth,db} from '../lib/supa.js';
@@ -458,7 +458,7 @@ async function meWire(){
     <div class="g-form">
       <div class="full" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap"><div id="avPrev" class="av" style="width:84px;height:84px;font-size:1.4rem;${p.avatar_path?`background-image:url('${esc(storage.publicUrl("avatars",p.avatar_path))}')`:""}">${p.avatar_path?"":esc(ini(p.full_name||"?"))}</div><div><label for="avFile">Profile photo</label><input id="avFile" type="file" accept="image/jpeg,image/png,image/webp"><div><small id="avMsg" role="status" style="color:var(--muted)">JPG, PNG or WebP. Resized on your device; location data in the photo is removed.</small></div></div></div>
       <div class="full"><label>Full name *</label><input class="field" name="full_name" maxlength="120" value="${v(p.full_name)}"><div class="err"></div></div>
-      <div><label>Graduation year</label><input class="field" name="graduation_year" type="number" min="1950" max="2100" value="${v(p.graduation_year)}"></div>
+      <div><label>Batch (graduation year)</label><select class="field" name="graduation_year"><option value="">Not set</option>${[...new Set([...batchYears(),...(p.graduation_year?[p.graduation_year]:[])])].sort((a,b)=>b-a).map(y=>`<option value="${y}"${y===p.graduation_year?" selected":""}>${y}</option>`).join("")}</select></div>
       <div><label>Enrolment / seat number</label><input class="field" name="enrollment_no" maxlength="40" value="${v(p.enrollment_no)}"></div>
       <div class="full"><small style="color:var(--muted)">Department: Civil Engineering. Changing your year or enrolment number sends your profile for re-verification.</small></div>
       <div class="full"><label>Headline</label><input class="field" name="headline" maxlength="160" placeholder="e.g. Site Engineer at ABC Infra" value="${v(p.headline)}"></div>
