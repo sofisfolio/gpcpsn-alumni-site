@@ -76,7 +76,7 @@ const nav = (page) => page.$$eval(".adm-nav a span", (e) => e.map((x) => x.textC
     const n = await nav(page);
     rec("faculty sees Dashboard, Alumni, Jobs, Events, News & blogs, Reports, Messages", n.join() === "Dashboard,Alumni,Jobs,Events,News & blogs,Reports,Messages", n.join());
     rec("faculty does not see Staff & roles or Activity log", !n.includes("Staff & roles") && !n.includes("Activity log"));
-    rec("Staff panel link shows for staff", await page.$eval("#adminLink", (e) => getComputedStyle(e).display !== "none"));
+    rec("Admin panel link shows for staff", await page.$eval("#adminLink", (e) => getComputedStyle(e).display !== "none"));
     const t = await page.textContent("#adMain");
     rec("dashboard shows the real counts", t.includes("3") && t.includes("12") && t.includes("Alumni waiting for verification"));
     rec("sidebar badges show waiting work", (await page.$$eval("[data-badge]", (e) => e.map((x) => x.textContent).join())).includes("3"));

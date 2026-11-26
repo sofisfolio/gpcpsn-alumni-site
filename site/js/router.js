@@ -4,7 +4,7 @@ import {app,links,burger,lb,lbi,hooks} from './ui.js';
 import {V} from './views/templates.js';
 import {wire} from './views/wire.js';
 const ROUTES=["home","about","alumni","profile","jobs","job","post-job","events","event","news","blog","login","me","admin","contact","write"];
-const TITLES={home:"GPCPSN Alumni Network",about:"About Alumni",alumni:"Alumni Network",jobs:"Job Portal","post-job":"Post a Job",events:"Events",news:"News & Blogs",login:"Login",me:"My profile",admin:"Staff panel",contact:"Contact",write:"Write an article"};
+const TITLES={home:"GPCPSN Alumni Network",about:"About Alumni",alumni:"Alumni Network",jobs:"Job Portal","post-job":"Post a Job",events:"Events",news:"News & Blogs",login:"Login",me:"My profile",admin:"Admin panel",contact:"Contact",write:"Write an article"};
 export function parse(){
   const h=(location.hash||"#home").slice(1);
   const [p,...rest]=h.split("/");

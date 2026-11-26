@@ -241,6 +241,17 @@ const STAFF = { superadmin: false, roles: ["Faculty"], permissions: FAC };
     rec("a contributor (publish only) cannot approve or reject, only edit and delete their own", (await page.$("[data-act=rejected]")) === null && (await page.$("[data-act=published]")) === null && (await page.$("[data-act=editarticle]")) !== null);
     rec("contributor sees News & blogs but not Events", (await page.$$eval(".adm-nav a span", (e) => e.map((x) => x.textContent))).join() === "Dashboard,News & blogs"); await ctx.close(); }
 
+  /* H. WordPress-style "Add new" shortcuts */
+  { const b = makeBackend({ access: STAFF }); const { ctx, page, errs } = await open(browser, b, id(2));
+    await page.goto(U + "#admin/articles/new"); await page.waitForSelector("#arForm");
+    rec("#admin/articles/new opens a blank article editor", (await page.textContent("#adMain")).includes("New article"));
+    await page.goto(U + "#admin"); await page.waitForSelector(".adm-quick");
+    rec("dashboard has quick actions for what the role may do", (await page.textContent(".adm-quick")).includes("New event") && (await page.textContent(".adm-quick")).includes("Write article"));
+    await page.click("[data-plus=events]"); await page.waitForSelector("#evForm");
+    rec("the + beside Events opens a blank event form", (await page.textContent("#adMain")).includes("New event"));
+    rec("panel is called Admin panel", (await page.textContent(".adm-head")).includes("Admin panel") && (await page.textContent("#adminLink")).includes("Admin panel"));
+    rec("no JS errors (add new)", errs.length === 0, errs.join("|")); await ctx.close(); }
+
   await browser.close(); server.close();
   const ok = results.filter(Boolean).length; console.log(`\n${ok}/${results.length} passed`); process.exit(ok === results.length ? 0 : 1);
 })().catch((e) => { console.error(e); process.exit(2); });
