@@ -10,7 +10,7 @@ export const U=(id,w=1400)=>{
 };
 export const P=id=>U(id,600);
 export const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-export const ini=n=>n.split(" ").map(x=>x[0]).slice(0,2).join("");
+export const ini=n=>String(n||"?").trim().split(" ").map(x=>x[0]).slice(0,2).join("");
 export const TODAY=new Date(new Date().toDateString());
 export const dt=s=>{const d=new Date(s+"T00:00:00");return{day:d.getDate(),mon:d.toLocaleString("en-IN",{month:"short"}),full:d.toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"}),short:d.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}),past:d<TODAY}};
 export const sleep=ms=>new Promise(r=>setTimeout(r,ms));

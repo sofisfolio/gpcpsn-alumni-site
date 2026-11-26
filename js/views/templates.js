@@ -24,17 +24,17 @@ V.home=()=>`
       <p class="hp">Reconnect with your batchmates, find verified opportunities and give back to the institute that started your career.</p>
       <div class="hero-cta"><a href="#login/join" class="btn btn-em">Join Alumni Network <span>→</span></a><a href="#about" class="btn btn-white">Explore the network</a></div>
     </div>
-    <div class="net reveal d2" aria-label="Live network activity">
-      <div class="net-top"><span class="live"><i></i>Live activity</span><span>Network</span></div>
-      <div class="feed" id="feed"></div>
-      <div class="net-foot"><span>Civil Engineering</span><span>Batch 2008 → 2026</span><span>Jobs · Events · Mentoring</span></div>
+    <div class="net reveal d2" aria-label="What the network offers">
+      <div class="net-top"><span>Your network</span><span>Civil Engineering</span></div>
+      <div class="feed"><div class="fi"><i></i><span>Verified alumni directory</span></div><div class="fi"><i></i><span>Jobs shared by fellow alumni</span></div><div class="fi"><i></i><span>Reunions, talks and events</span></div></div>
+      <div class="net-foot"><span>Government Polytechnic, Chhatrapati Sambhaji Nagar</span></div>
     </div>
   </div>
 </section>
 
 <div class="glance"><div class="wrap"><div class="glance-box reveal">
-  ${[[ICO.users,"Registered alumni",1200],["M12 2a10 10 0 100 20 10 10 0 000-20zM2 12h20M12 2c3 3 3 17 0 20M12 2c-3 3-3 17 0 20","Countries",COUNTRIES.length],["M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6","Industries",INDUSTRIES.length],["M21 16V8l-9-5-9 5v8l9 5 9-5zM12 3v18","Job opportunities",JOBS.length],["M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z","Events conducted",EVENTS.length]]
-    .map(x=>`<div class="gl"><div class="ic">${svg(x[0],22)}</div><b data-c="${x[2]}">0</b><span>${x[1]}</span></div>`).join("")}
+  ${[[ICO.users,"Verified alumni","verified_members"],["M12 2a10 10 0 100 20 10 10 0 000-20zM2 12h20M12 2c3 3 3 17 0 20M12 2c-3 3-3 17 0 20","Countries","countries"],["M21 16V8l-9-5-9 5v8l9 5 9-5zM12 3v18","Open jobs","open_jobs"],["M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z","Upcoming events","upcoming_events"]]
+    .map(x=>`<div class="gl"><div class="ic">${svg(x[0],22)}</div><b data-stat="${x[2]}">–</b><span>${x[1]}</span></div>`).join("")}
 </div></div></div>
 
 <section class="sec">
@@ -117,11 +117,11 @@ V.home=()=>`
   </div>
 </section>
 
-<section class="sec paper">
+<section class="sec paper" id="testiSec" style="display:none">
   <div class="wrap">
     <div class="sec-h reveal"><div><div class="kicker">Testimonials</div><h2>In their words</h2></div></div>
     <div class="reveal" id="testi">
-      ${TESTI.map((t,i)=>`<div class="tslide ${i===0?'on':''}"><div class="tph" style="background-image:url('${P(t.img)}')"></div><div><p class="tq">${esc(t.q)}</p><div class="twho"><span class="av" style="width:48px;height:48px;font-size:.92rem">${esc(ini(t.n))}</span><div><b style="color:var(--navy)">${esc(t.n)}</b><small>Batch ${t.y} · ${esc(t.r)}</small></div></div></div></div>`).join("")}
+
       <div class="tdots" id="tdots"></div>
     </div>
   </div>
@@ -141,7 +141,7 @@ V.home=()=>`
 </section>`;
 
 V.about=()=>`
-${phero("About Alumni","About the Alumni Network","Created by the Department of Civil Engineering","Government Polytechnic, Chhatrapati Sambhaji Nagar. Meet the faculty, our vision and mission, and the outcomes every Civil Engineering diploma graduate works toward.","CAMPUS",[["2008","Earliest batch"],["40+","Batches"],["1,200+","Alumni"]])}
+${phero("About Alumni","About the Alumni Network","Created by the Department of Civil Engineering","Government Polytechnic, Chhatrapati Sambhaji Nagar. Meet the faculty, our vision and mission, and the outcomes every Civil Engineering diploma graduate works toward.","CAMPUS",[])}
 <section class="sec">
   <div class="wrap split">
     <div class="reveal">
@@ -500,13 +500,6 @@ V.blog=(id)=>{
           <button class="chip" data-share="whatsapp">WhatsApp</button>
           <button class="chip" data-share="linkedin">LinkedIn</button>
         </div>
-        <div class="cmt">
-          <h3>Comments</h3>
-          <div class="c"><b>Sameer K.</b> · batch 2016<p>Great read. The drone point matches what we see on site every week.</p></div>
-          <div class="c"><b>Nisha P.</b> · batch 2019<p>Would love a follow-up on testing routines for blended cements.</p></div>
-          <form id="cmtForm" style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap"><input class="field" id="cmtIn" placeholder="Add a comment (members only)" aria-label="Comment" style="flex:1 1 260px"><button class="btn btn-navy btn-sm" type="submit">Comment</button></form>
-          <small style="color:var(--muted);display:block;margin-top:10px">Comments are moderated before they appear.</small>
-        </div>
       </article>
     </div>
     <div class="wrap" style="margin-top:80px"><div class="sec-h"><div><div class="kicker">Related</div><h2>Keep reading</h2></div></div>
@@ -544,7 +537,8 @@ V.login=()=>`
               <div class="full"><label for="j_name">Full name *</label><input class="field" id="j_name" name="name"><div class="err"></div></div>
               <div class="full"><label for="j_email">Email *</label><input class="field" id="j_email" name="email" type="email"><div class="err"></div></div>
               <div><label for="j_y">Graduation year *</label><select class="field" id="j_y" name="y">${Array.from({length:30},(_,i)=>2026-i).map(y=>`<option value="${y}">${y}</option>`).join("")}</select></div>
-              <div><label for="j_d">Department</label><select class="field" id="j_d" name="d"><option>Civil Engineering</option><option>Other</option></select></div>
+              <div><label for="j_d">Department</label><select class="field" id="j_d" name="d"><option value="civil-engineering">Civil Engineering</option></select></div>
+              <div class="full"><label for="j_en">Enrolment / seat number <small style="color:var(--muted)">(optional, helps us verify you faster)</small></label><input class="field" id="j_en" name="en" maxlength="40" autocomplete="off"><div class="err"></div></div>
               <div><label for="pwIn">Password *</label><input class="field" name="pw" type="password" id="pwIn"><div class="strength"><i id="pwBar"></i></div><div class="err"></div></div>
               <div><label for="j_pw2">Confirm password *</label><input class="field" id="j_pw2" name="pw2" type="password"><div class="err"></div></div>
               <div class="full"><label class="checkrow" style="margin:0"><input type="checkbox" name="terms"> I agree to the terms and privacy policy</label><div class="err" id="tErr"></div></div>
@@ -555,7 +549,7 @@ V.login=()=>`
 
         <div class="pane" id="p-forgot">
           <form id="fForgot" class="stack-f" novalidate>
-            <p>Enter your registered email and we will send a reset link.</p>
+            <p>Enter your registered email and we will send a reset link. If it does not arrive, contact the alumni cell.</p>
             <div><label for="f_email">Email</label><input class="field" id="f_email" name="email" type="email"><div class="err"></div></div>
             <button class="btn btn-navy" type="submit" style="width:100%">Send reset link</button>
           </form>
@@ -572,3 +566,6 @@ export function phero(kicker,title,sub,text,img,stats,pos){
   ${stats.length?`<div class="mini-stats">${stats.map(s=>`<div><b>${esc(String(s[0]))}</b><small>${esc(s[1])}</small></div>`).join("")}</div>`:""}</div></section>`;
 }
 export function notFound(t,p){return `<section class="phero" style="min-height:320px"><div class="bg" style="background-image:url('${U("photo-1541888946425-d81bb19240f5",1600)}')"></div><div class="wrap"><div class="phero-copy"><h1>${esc(t)}</h1><p>${esc(p)}</p><a href="#home" class="btn btn-em" style="margin-top:22px">Back to home</a></div></div></section>`}
+
+V.me=()=>`
+<section class="sec" style="padding-top:70px"><div class="wrap" style="max-width:860px"><div id="meBox"><p>Loading…</p></div></div></section>`;

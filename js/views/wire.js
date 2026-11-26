@@ -2,6 +2,8 @@
 import {$,$$,esc,ini,U,P,dt,TODAY} from '../lib/util.js';
 import {S,EMAIL_RE} from '../state.js';
 import {toast,openModal,closeModal,gate,setAuth,motion,bars,hooks,app,LOCK_ICON} from '../ui.js';
+import {auth,db} from '../lib/supa.js';
+import {friendly,loadMe} from '../services/auth.js';
 import {ALUMNI,JOBS,EVENTS,NEWS} from '../data/dev-sample.js';
 export function wire(p,arg){
   motion(app);bars(app);
@@ -17,34 +19,39 @@ export function wire(p,arg){
   if(p==="news")newsWire();
   if(p==="blog")blogWire(arg);
   if(p==="login")loginWire(arg);
+  if(p==="me")meWire();
 }
 
 /* home */
-let heroT,tI;
-const FEED=["New batch member verified · Civil Engineering","Job posted · Site Engineer · Pune","Mentor joined · Structural design","Reunion RSVP · Annual Alumni Meet","Connection made · Construction · Mumbai","Internship listed · Surveying · Sambhaji Nagar"];
+let tTimer;
 function homeWire(){
-  clearInterval(heroT);
-  const box=$("#feed");
-  if(box){
-    let k=0;
-    const show=()=>{
-      if(!$("#feed")){clearInterval(heroT);return}
-      box.innerHTML=[0,1,2].map(j=>`<div class="fi" style="opacity:${1-j*.28}"><i></i><span>${esc(FEED[(k+j)%FEED.length])}</span></div>`).join("");
-      k=(k+1)%FEED.length;
-    };
-    show();heroT=setInterval(show,2600);
-  }
   const car=$("#car");
   $("#carL").onclick=()=>car.scrollBy({left:-320,behavior:"smooth"});
   $("#carR").onclick=()=>car.scrollBy({left:320,behavior:"smooth"});
-
-  const ts=$$(".tslide",app),td=$("#tdots");let ti=0;
-  ts.forEach((_,i)=>td.insertAdjacentHTML("beforeend",`<button aria-label="Testimonial ${i+1}" class="${i?'':'on'}"></button>`));
-  const tset=i=>{ti=(i+ts.length)%ts.length;ts.forEach((t,j)=>t.classList.toggle("on",j===ti));$$("button",td).forEach((b,j)=>b.classList.toggle("on",j===ti))};
-  let tTimer;
-  const restartT=()=>{clearInterval(tTimer);tTimer=setInterval(()=>tset(ti+1),6500)};
-  td.onclick=e=>{const b=e.target.closest("button");if(b){tset([...td.children].indexOf(b));restartT()}};
-  restartT();
+  loadStats();loadTestimonials();
+}
+async function loadStats(){
+  try{
+    const [r]=await db.select("site_stats","*");
+    if(!r)return;
+    $$("[data-stat]",app).forEach(el=>{el.textContent=Number(r[el.dataset.stat]||0).toLocaleString("en-IN")});
+  }catch{/* leave dashes */}
+}
+async function loadTestimonials(){
+  clearInterval(tTimer);
+  try{
+    const rows=await db.select("testimonials","quote,author_name,batch_year,role_text",{order:"sort_order.asc",limit:"10"});
+    const sec=$("#testiSec"),box=$("#testi");
+    if(!sec||!box||!rows.length)return;
+    box.insertAdjacentHTML("afterbegin",rows.map((t,i)=>`<div class="tslide ${i===0?'on':''}" style="grid-template-columns:1fr"><div><p class="tq">${esc(t.quote)}</p><div class="twho"><span class="av" style="width:48px;height:48px;font-size:.92rem">${esc(ini(t.author_name))}</span><div><b style="color:var(--navy)">${esc(t.author_name)}</b><small>${[t.batch_year?"Batch "+t.batch_year:"",t.role_text].filter(Boolean).map(esc).join(" · ")}</small></div></div></div></div>`).join(""));
+    sec.style.display="";
+    const ts=$$(".tslide",box),td=$("#tdots");let ti=0;
+    ts.forEach((_,i)=>td.insertAdjacentHTML("beforeend",`<button aria-label="Testimonial ${i+1}" class="${i?'':'on'}"></button>`));
+    const tset=i=>{ti=(i+ts.length)%ts.length;ts.forEach((t,j)=>t.classList.toggle("on",j===ti));$$("button",td).forEach((b,j)=>b.classList.toggle("on",j===ti))};
+    const restartT=()=>{clearInterval(tTimer);if(ts.length>1)tTimer=setInterval(()=>{if(!$("#testi"))clearInterval(tTimer);else tset(ti+1)},6500)};
+    td.onclick=e=>{const b=e.target.closest("button");if(b){tset([...td.children].indexOf(b));restartT()}};
+    restartT();
+  }catch{/* section stays hidden */}
 }
 
 /* alumni directory */
@@ -195,16 +202,9 @@ function newsWire(){
 function blogWire(id){
   const n=NEWS.find(x=>x.id===id);if(!n)return;
   $("#shareCopy").onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(location.href).catch(()=>{});toast("Link copied")};
-  $$("[data-share]").forEach(b=>b.onclick=()=>toast("Sharing to "+b.dataset.share+" (demo)"));
-  $("#cmtForm").onsubmit=e=>{
-    e.preventDefault();
-    gate("Comments are for signed-in members.",()=>{
-      const v=$("#cmtIn").value.trim();if(!v)return;
-      const d=document.createElement("div");d.className="c";
-      d.innerHTML=`<b>${esc(S.user)}</b> · just now<p>${esc(v)}</p>`;
-      e.target.before(d);$("#cmtIn").value="";toast("Comment submitted for moderation");
-    });
-  };
+  $$("[data-share]").forEach(b=>b.onclick=()=>{const u=encodeURIComponent(location.href),t=encodeURIComponent(n.t);
+    const to={whatsapp:"https://wa.me/?text="+t+"%20"+u,linkedin:"https://www.linkedin.com/sharing/share-offsite/?url="+u}[b.dataset.share];
+    if(to)window.open(to,"_blank","noopener,noreferrer")});
 }
 
 /* login */
@@ -213,18 +213,23 @@ function loginWire(arg){
   $$("[data-p]").forEach(b=>b.addEventListener("click",()=>show(b.dataset.p)));
   if(arg==="join")show("join");
   const setErr=(el,ok,msg)=>{el.classList.toggle("bad",!ok);el.parentElement.querySelector(".err").textContent=ok?"":msg};
+  const busy=(f,on,label)=>{const b=f.querySelector("button[type=submit]");b.disabled=on;if(label)b.firstChild.textContent=on?"Please wait… ":label};
 
-  $("#fLogin").onsubmit=e=>{
+  $("#fLogin").onsubmit=async e=>{
     e.preventDefault();const f=e.target;const em=f.email.value.trim(),pw=f.pw.value;
     const okE=EMAIL_RE.test(em),okP=pw.length>=6;
     setErr(f.email,okE,"Enter a valid email");
     setErr(f.pw,okP,"At least 6 characters");
     if(!okE||!okP)return;
-    setAuth(true,em.split("@")[0].replace(/[._]/g," ").replace(/\b\w/g,c=>c.toUpperCase()));
-    toast("Welcome back");location.hash="#home";
+    busy(f,true,"Sign in ");
+    try{
+      await auth.signIn(em,pw);await loadMe();
+      toast("Welcome back");location.hash=S.profile&&S.profile.verification_status==="verified"?"#home":"#me";
+    }catch(err){setErr(f.pw,false,friendly(err))}
+    finally{busy(f,false,"Sign in ")}
   };
 
-  $("#fJoin").onsubmit=e=>{
+  $("#fJoin").onsubmit=async e=>{
     e.preventDefault();const f=e.target;let ok=true;
     const chk=(el,v,m)=>{setErr(el,v,m);if(!v)ok=false};
     chk(f.name,f.name.value.trim().length>1,"Enter your full name");
@@ -233,7 +238,20 @@ function loginWire(arg){
     chk(f.pw2,f.pw2.value===f.pw.value&&f.pw2.value.length>0,"Passwords do not match");
     const t=f.terms.checked;$("#tErr").textContent=t?"":"Please accept the terms";if(!t)ok=false;
     if(!ok)return;
-    setAuth(true,f.name.value.trim());toast("Account created. Welcome!");location.hash="#home";
+    busy(f,true,"Create account ");
+    try{
+      const email=f.email.value.trim();
+      const r=await auth.signUp(email,f.pw.value,{full_name:f.name.value.trim(),graduation_year:+f.y.value,department:f.d.value});
+      if(r.session){
+        const en=f.en.value.trim();
+        if(en){try{await db.update("profiles",{id:"eq."+r.session.user.id},{enrollment_no:en})}catch{/* can be added later on the profile page */}}
+        await loadMe();
+        toast("Account created. Please complete your profile.");location.hash="#me";
+      }else{
+        $("#p-join").innerHTML=`<div style="text-align:center;padding:30px 10px"><h2 style="font-size:1.4rem">Check your email</h2><p style="margin-top:10px">We sent a confirmation link to <b>${esc(email)}</b>. Open it, then sign in. After that, the alumni cell will verify your profile.</p></div>`;
+      }
+    }catch(err){setErr(f.email,false,friendly(err))}
+    finally{if($("#fJoin"))busy(f,false,"Create account ")}
   };
 
   $("#pwIn").addEventListener("input",e=>{
@@ -244,10 +262,89 @@ function loginWire(arg){
     bar.style.background=["#ef4444","#f59e0b","#eab308","#F07F2A","#E06A1F"][s];
   });
 
-  $("#fForgot").onsubmit=e=>{
-    e.preventDefault();const v=e.target.email.value.trim();
-    if(!EMAIL_RE.test(v)){setErr(e.target.email,false,"Enter a valid email");return}
-    toast("Reset link sent (demo)");
+  $("#fForgot").onsubmit=async e=>{
+    e.preventDefault();const f=e.target,v=f.email.value.trim();
+    if(!EMAIL_RE.test(v)){setErr(f.email,false,"Enter a valid email");return}
+    setErr(f.email,true,"");
+    try{await auth.recover(v);toast("If that email is registered, a reset link is on its way")}
+    catch(err){setErr(f.email,false,friendly(err))}
+  };
+}
+
+/* my profile */
+const STATUS={
+  pending:["Awaiting verification","The alumni cell will check your details and verify you. Until then you can complete your profile, but it is not listed and you cannot post jobs or register for events."],
+  verified:["Verified alumnus","Your profile follows the visibility you choose below."],
+  rejected:["Verification needs attention","Please correct your details and save again."],
+  suspended:["Account suspended","Please contact the alumni cell."]
+};
+async function meWire(){
+  const box=$("#meBox");if(!box)return;
+  const s=auth.getSession();
+  if(!s){box.innerHTML=`<div style="text-align:center;padding:40px 10px"><div class="ic dark" style="margin:0 auto 18px;width:68px;height:68px;border-radius:50%">${LOCK_ICON}</div><h2 style="font-size:1.55rem">Sign in to see your profile</h2><div style="display:flex;gap:10px;justify-content:center;margin-top:20px"><a href="#login" class="btn btn-em">Sign in</a><a href="#login/join" class="btn btn-line">Create account</a></div></div>`;return}
+  if(!S.profile){await loadMe()}
+  const p=S.profile;
+  if(!p){box.innerHTML=`<p>We could not load your profile. Please refresh the page.</p>`;return}
+  let c={};
+  try{[c={}]=await db.select("profile_contact","*",{profile_id:"eq."+p.id})}catch{/* optional */}
+  const st=STATUS[p.verification_status]||STATUS.pending;
+  const v=x=>esc(x??"");
+  const sel=(name,val,opts)=>`<select class="field" name="${name}">${opts.map(o=>`<option value="${o[0]}"${o[0]===val?" selected":""}>${o[1]}</option>`).join("")}</select>`;
+  box.innerHTML=`
+  <div class="card" style="padding:22px 26px;margin-bottom:22px"><div class="kicker">${esc(st[0])}</div><p style="margin-top:6px">${esc(st[1])}${p.verification_note?` <b>Note from the alumni cell:</b> ${esc(p.verification_note)}`:""}</p>${S.isAdmin?'<p style="margin-top:8px"><b>You are an administrator.</b></p>':""}</div>
+  <form id="fMe" class="card" style="padding:28px" novalidate>
+    <h2 style="font-size:1.5rem;margin-bottom:6px">My profile</h2>
+    <p style="margin-bottom:18px">Signed in as <b>${esc(s.user.email)}</b></p>
+    <div class="g-form">
+      <div class="full"><label>Full name *</label><input class="field" name="full_name" maxlength="120" value="${v(p.full_name)}"><div class="err"></div></div>
+      <div><label>Graduation year</label><input class="field" name="graduation_year" type="number" min="1950" max="2100" value="${v(p.graduation_year)}"></div>
+      <div><label>Enrolment / seat number</label><input class="field" name="enrollment_no" maxlength="40" value="${v(p.enrollment_no)}"></div>
+      <div class="full"><small style="color:var(--muted)">Department: Civil Engineering. Changing your year or enrolment number sends your profile for re-verification.</small></div>
+      <div class="full"><label>Headline</label><input class="field" name="headline" maxlength="160" placeholder="e.g. Site Engineer at ABC Infra" value="${v(p.headline)}"></div>
+      <div><label>Company</label><input class="field" name="current_company" maxlength="120" value="${v(p.current_company)}"></div>
+      <div><label>Position</label><input class="field" name="current_position" maxlength="120" value="${v(p.current_position)}"></div>
+      <div><label>City</label><input class="field" name="city" maxlength="80" value="${v(p.city)}"></div>
+      <div><label>Country</label><input class="field" name="country" maxlength="80" value="${v(p.country)}"></div>
+      <div class="full"><label>Industry</label><input class="field" name="industry" maxlength="80" value="${v(p.industry)}"></div>
+      <div class="full"><label>About you</label><textarea class="field" name="bio" rows="5" maxlength="2000">${v(p.bio)}</textarea></div>
+      <div class="full"><label>Skills <small style="color:var(--muted)">(separate with commas)</small></label><input class="field" name="skills" value="${v((p.skills||[]).join(", "))}"></div>
+      <div><label>Website</label><input class="field" name="website_url" placeholder="https://" value="${v(p.website_url)}"><div class="err"></div></div>
+      <div><label>LinkedIn</label><input class="field" name="linkedin_url" placeholder="https://www.linkedin.com/in/…" value="${v(p.linkedin_url)}"><div class="err"></div></div>
+      <div><label>Contact email <small style="color:var(--muted)">(private)</small></label><input class="field" name="contact_email" type="email" value="${v(c.contact_email)}"><div class="err"></div></div>
+      <div><label>Phone <small style="color:var(--muted)">(private)</small></label><input class="field" name="phone" value="${v(c.phone)}"><div class="err"></div></div>
+      <div><label>Who can see my profile</label>${sel("profile_visibility",p.profile_visibility,[["private","Only me"],["members","Signed-in alumni"],["public","Anyone"]])}</div>
+      <div><label>Who can see my contact details</label>${sel("contact_visibility",p.contact_visibility,[["hidden","Nobody"],["members","Signed-in alumni"]])}</div>
+      <div class="full"><small style="color:var(--muted)">Your profile is shown in the directory only after you are verified and you choose a visibility other than "Only me".</small></div>
+      <div class="full"><button class="btn btn-em" type="submit">Save profile <span>→</span></button> <span id="meMsg" role="status" style="margin-left:12px"></span></div>
+    </div>
+  </form>`;
+  const f=$("#fMe");
+  const setErr=(el,ok,msg)=>{el.classList.toggle("bad",!ok);const er=el.parentElement.querySelector(".err");if(er)er.textContent=ok?"":msg};
+  f.onsubmit=async e=>{
+    e.preventDefault();let ok=true;
+    const val=n=>f[n].value.trim();
+    const nul=n=>val(n)===""?null:val(n);
+    const https=n=>{const x=val(n);const good=x===""||/^https:\/\/[^\s<>"']{3,255}$/i.test(x);setErr(f[n],good,"Link must start with https://");if(!good)ok=false;return x===""?null:x};
+    setErr(f.full_name,val("full_name").length>1,"Enter your full name");if(val("full_name").length<2)ok=false;
+    const website=https("website_url"),linkedin=https("linkedin_url");
+    const ce=val("contact_email"),cemOk=ce===""||EMAIL_RE.test(ce);setErr(f.contact_email,cemOk,"Enter a valid email");if(!cemOk)ok=false;
+    const ph=val("phone"),phOk=ph===""||/^[0-9+() -]{6,20}$/.test(ph);setErr(f.phone,phOk,"Digits, spaces, + ( ) - only");if(!phOk)ok=false;
+    if(!ok)return;
+    const gy=val("graduation_year");
+    const skills=val("skills").split(",").map(x=>x.trim().slice(0,40)).filter(Boolean).slice(0,30);
+    const payload={full_name:val("full_name"),graduation_year:gy===""?null:+gy,enrollment_no:nul("enrollment_no"),headline:nul("headline"),
+      current_company:nul("current_company"),current_position:nul("current_position"),city:nul("city"),country:nul("country"),industry:nul("industry"),
+      bio:nul("bio"),skills,website_url:website,linkedin_url:linkedin,profile_visibility:f.profile_visibility.value,contact_visibility:f.contact_visibility.value};
+    const btn=f.querySelector("button[type=submit]"),msg=$("#meMsg");btn.disabled=true;msg.textContent="Saving…";
+    try{
+      const rows=await db.update("profiles",{id:"eq."+p.id},payload);
+      await db.insert("profile_contact",{profile_id:p.id,contact_email:ce===""?null:ce,phone:ph===""?null:ph},{upsert:true});
+      if(rows&&rows[0])S.profile=rows[0];
+      setAuth(true,S.profile.full_name||s.user.email.split("@")[0]);
+      toast("Profile saved");
+      if(rows&&rows[0]&&rows[0].verification_status!==p.verification_status)hooks.route();else msg.textContent="Saved";
+    }catch(err){msg.textContent=/check constraint|violates/i.test(err.message)?"Some details are not valid. Please check the highlighted fields.":friendly(err)}
+    finally{btn.disabled=false}
   };
 }
 

@@ -1,7 +1,7 @@
 /* Chrome: toast, modal, lightbox, auth gate, mobile nav, scroll/reveal effects. */
 import {$,$$,esc,ini} from './lib/util.js';
 import {S} from './state.js';
-export const hooks={route:()=>{}};
+export const hooks={route:()=>{},signOut:async()=>{}};
 export const app=$('#app');
 export const toastEl=$("#toast");let tt;
 export function toast(m){$("#toastT").textContent=m;toastEl.classList.add("on");clearTimeout(tt);tt=setTimeout(()=>toastEl.classList.remove("on"),2800)}
@@ -26,9 +26,9 @@ export function setAuth(on,name){
   j.textContent=on?"Sign out":"Join Alumni Network";
   j.setAttribute("href",on?"#home":"#login/join");
   const me=$("#me");
-  me.innerHTML=on?`<span class="av">${esc(ini(name))}</span><span>${esc(name)}</span>`:"";
+  me.innerHTML=on?`<a href="#me" class="me-link" aria-label="My profile" style="display:flex;align-items:center;gap:8px;color:inherit;text-decoration:none"><span class="av">${esc(ini(name))}</span><span>${esc(name)}</span></a>`:"";
 }
-$("#joinCta").addEventListener("click",e=>{if(S.auth){e.preventDefault();setAuth(false);toast("Signed out");hooks.route()}});
+$("#joinCta").addEventListener("click",e=>{if(S.auth){e.preventDefault();hooks.signOut()}});
 
 /* mobile nav */
 export const links=$("#links"),burger=$("#burger");
