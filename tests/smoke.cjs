@@ -55,7 +55,13 @@ const WIDTHS = [390, 768, 1024, 1440];
     // Live feed rotates by timer and counters animate; ignore those two regions.
     const get = (p) => p.evaluate(() => { const a = document.querySelector("#app").cloneNode(true); a.querySelectorAll("#feed,[data-c]").forEach((e) => e.remove()); return a.innerText || a.textContent; });
     const [ta, tb] = [norm(await get(A.page)), norm(await get(B.page))];
-    rec(`render parity ${route}`, ta === tb && ta.length > 20, ta === tb ? `${ta.length} chars identical` : `DIFF len ${ta.length} vs ${tb.length}`);
+    // Phase 3 deliberately removed invented content, so these routes must differ from the prototype, and must not contain it.
+    const CHANGED = ["#home", "#about", "#about/faculty", "#blog/survey-future", "#login", "#login/join", "#nonexistent"];
+    const FAKE = ["1,200", "Live activity", "Sameer K.", "Nisha P.", "Reset link sent (demo)", "Batch 2008"];
+    if (CHANGED.includes(route)) {
+      const bad = FAKE.filter((x) => ta.includes(x));
+      rec(`intentional change, no invented content ${route}`, ta.length > 20 && bad.length === 0, bad.length ? "still contains: " + bad.join(", ") : `${ta.length} chars`);
+    } else rec(`render parity ${route}`, ta === tb && ta.length > 20, ta === tb ? `${ta.length} chars identical` : `DIFF len ${ta.length} vs ${tb.length}`);
     rec(`no JS/same-origin errors ${route}`, A.errs.length === 0, A.errs.join(" | "));
     await A.ctx.close(); await B.ctx.close();
   }

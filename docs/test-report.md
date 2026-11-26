@@ -86,3 +86,12 @@ External hosts (Google Fonts, Unsplash) are blocked in the sandbox, so image ren
 ## Not tested yet (cannot be until later phases)
 
 Authentication, email delivery, RLS/permissions, storage, moderation, admin, real data, production domain/HTTPS, backups, screen-reader testing, colour contrast audit, cross-browser (only Chromium so far).
+
+
+## Phase 3 (sign-up, sign-in, profile)
+- `tests/auth.e2e.cjs`: 32/32 pass, in a real browser against a **mock** Supabase (it imitates the documented behaviour; it is not the real service).
+  Covers sign-up (with and without email confirmation), duplicate email, validation, wrong password, rate limit, network failure, session kept across reload,
+  sign-out, profile edit and cleaning, `javascript:` links refused, private contact stored apart, no verification/admin fields ever sent, tokens only on signed-in requests,
+  testimonial text escaped, real numbers on the home page, no invented content.
+- `tests/smoke.cjs`: 70/70 pass (the six pages that intentionally differ from the prototype are now checked for absence of invented content).
+- **Not yet verified:** the real Supabase Auth service. Verified live only when the owner registers on the deployed site (checked afterwards by SQL).
