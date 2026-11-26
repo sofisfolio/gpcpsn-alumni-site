@@ -1,4 +1,4 @@
-/* Staff panel (the "CMS"): sidebar + sections. Which sections appear depends on the signed-in person's permissions (S.perms).
+/* Admin panel (the "CMS"): sidebar + sections. Which sections appear depends on the signed-in person's permissions (S.perms).
    This is only a convenience: every action is re-checked by the database, so hiding a button is never the security. */
 import {$,$$,esc} from '../lib/util.js';
 import {S,can} from '../state.js';
@@ -45,10 +45,11 @@ function confirmBox(title,text,okLabel,fn){
 export async function adminWire(arg){
   const box=$('#adBox');if(!box)return;
   const note=h=>{box.innerHTML=`<div class="wrap" style="max-width:640px"><div class="card" style="padding:28px">${h}</div></div>`};
-  if(!auth.getSession()){note(`<p>Please <a class="more" href="#login">sign in</a> to open the staff panel.</p>`);return}
+  if(!auth.getSession()){note(`<p>Please <a class="more" href="#login">sign in</a> to open the admin panel.</p>`);return}
   if(!S.isAdmin){note(`<p>This area is for the alumni cell and faculty. If you should have access, ask a Superadmin to give you a role.</p>`);return}
   const allowed=SECTIONS.filter(s=>[].concat(s.p).some(can));
-  const cur=allowed.find(s=>s.k===arg)||allowed[0];
+  const [argSec,argSub]=String(arg||'').split('/');
+  const cur=allowed.find(s=>s.k===argSec)||allowed[0];
   let tab='';
   const TABS={members:[['pending','Waiting'],['verified','Verified'],['rejected','Rejected'],['suspended','Suspended'],['all','Everyone']],
     jobs:[['pending','Waiting'],['approved','Live'],['rejected','Not approved'],['all','Everyone']],
@@ -57,13 +58,14 @@ export async function adminWire(arg){
     articles:[['pending','Waiting for review'],['published','Published'],['draft','My drafts'],['rejected','Not approved'],['archived','Unpublished'],['all','All']],staff:[['people','People'],['roles','Roles']]};
   tab=TABS[cur.k]?TABS[cur.k][0][0]:'';
   let counts=null,editing=null;
+  if(argSub==='new'&&['events','articles'].includes(cur.k))editing={kind:cur.k==='events'?'event':'article',row:null};
   const me=auth.getSession().user.id;
   const cache={};
   const name=(S.profile&&S.profile.full_name)||'Staff';
 
   box.innerHTML=`<div class="adm"><aside class="adm-side"><div class="adm-who"><b>${esc(name)}</b><span>${esc(S.roles.join(', ')||'Staff')}</span></div>
-    <nav class="adm-nav">${allowed.map(s=>`<a href="#admin/${s.k}" class="${s.k===cur.k?'on':''}">${ic(s.i)}<span>${esc(s.t)}</span><em data-badge="${s.badge||''}"></em></a>`).join('')}</nav></aside>
-    <div class="adm-main"><div class="adm-head"><div class="kicker">Staff panel</div><h1>${esc(cur.t)}</h1></div><div id="adTabs"></div><div id="adMain"><p>Loading…</p></div></div></div>`;
+    <nav class="adm-nav">${allowed.map(s=>`<a href="#admin/${s.k}" class="${s.k===cur.k?'on':''}">${ic(s.i)}<span>${esc(s.t)}</span><em data-badge="${s.badge||''}"></em>${['events','articles'].includes(s.k)?`<i class="adm-plus" data-plus="${s.k}" title="Add new" role="link" tabindex="0">+</i>`:''}</a>`).join('')}</nav></aside>
+    <div class="adm-main"><div class="adm-head"><div class="kicker">Admin panel</div><h1>${esc(cur.t)}</h1></div><div id="adTabs"></div><div id="adMain"><p>Loading…</p></div></div></div>`;
 
   const paintBadges=()=>{if(!counts)return;$$('[data-badge]',box).forEach(b=>{const n=counts[b.dataset.badge];b.textContent=n>0?n:'';b.style.display=n>0?'':'none'})};
   const fetchCounts=async()=>{if(!can('dashboard.view'))return null;try{counts=await db.rpc('admin_dashboard');paintBadges()}catch{}return counts};
@@ -75,6 +77,7 @@ export async function adminWire(arg){
       const card=(n,label,sec)=>{const ok=sec&&allowed.some(s=>s.k===sec);return `<${ok?`a href="#admin/${sec}"`:'div'} class="card adm-stat"><b>${esc(c[n])}</b><span>${esc(label)}</span></${ok?'a':'div'}>`};
       el.innerHTML=`<div class="adm-stats">${card('members_pending','Alumni waiting for verification','members')}${card('jobs_pending','Jobs waiting for review','jobs')}${card('reports_open','Open reports','reports')}${card('messages_new','New messages','messages')}
         ${card('articles_pending','Articles waiting for review','articles')}${card('events_upcoming','Upcoming events','events')}${card('members_verified','Verified alumni','')}${card('jobs_live','Live job listings','')}</div>
+        <h2 class="adm-h2">Quick actions</h2><div class="adm-quick">${can('events.manage')?'<a class="btn btn-em btn-sm" href="#admin/events/new">+ New event</a>':''}${can('articles.review')||can('articles.publish')?'<a class="btn btn-em btn-sm" href="#admin/articles/new">+ Write article</a>':''}${can('jobs.publish')||can('jobs.review')?'<a class="btn btn-line btn-sm" href="#post-job">+ Post a job</a>':''}</div>
         <h2 class="adm-h2">Recent activity</h2>${actList(act)}`;
     },
     async members(el){
@@ -224,6 +227,7 @@ export async function adminWire(arg){
   };
 
   box.onclick=e=>{
+    const pl=e.target.closest('[data-plus]');if(pl){e.preventDefault();location.hash='#admin/'+pl.dataset.plus+'/new';return}
     const t=e.target.closest('[data-t]');if(t){tab=t.dataset.t;load();return}
     const rm=e.target.closest('[data-rm]');
     if(rm){const uid=rm.closest('[data-id]').dataset.id,role=rm.dataset.rm;if(!isId(uid))return;
