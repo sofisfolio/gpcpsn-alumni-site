@@ -2,6 +2,7 @@
 import {auth, db, onAuthChange} from '../lib/supa.js';
 import {S} from '../state.js';
 import {setAuth, toast, hooks} from '../ui.js';
+import {$} from '../lib/util.js';
 
 export function friendly(e) {
   const m = String((e && e.message) || e || '');
@@ -21,11 +22,12 @@ export function friendly(e) {
 let lastUid = null;
 export async function loadMe() {
   const s = auth.getSession();
-  if (!s) { S.profile = null; S.isAdmin = false; setAuth(false); return; }
+  if (!s) { S.profile = null; S.isAdmin = false; $('#adminLink').style.display = 'none'; setAuth(false); return; }
   try {
     const [p, a] = await Promise.all([db.select('profiles', '*', {id: 'eq.' + s.user.id}), db.select('app_admins', 'user_id')]);
     S.profile = p[0] || null; S.isAdmin = a.length > 0;
   } catch { S.profile = null; S.isAdmin = false; }
+  $('#adminLink').style.display = S.isAdmin ? '' : 'none';
   setAuth(true, (S.profile && S.profile.full_name) || (s.user.email || 'Member').split('@')[0]);
 }
 

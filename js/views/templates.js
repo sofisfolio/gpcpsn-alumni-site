@@ -69,14 +69,11 @@ V.home=()=>`
   </div>
 </section>
 
-<section class="sec">
+<section class="sec" id="featSec" style="display:none">
   <div class="wrap">
     <div class="sec-h reveal"><div><div class="kicker">Featured alumni</div><h2>People who inspire</h2></div>
       <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div class="car-nav"><button id="carL" aria-label="Previous"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button><button id="carR" aria-label="Next"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button></div><a href="#alumni" class="more">All alumni <span>→</span></a></div></div>
     <div class="car" id="car">
-      ${ALUMNI.filter(a=>a.pub).slice(0,8).map(a=>`
-      <article class="card pcard reveal"><div class="ph" style="background-image:url('${P(a.ph)}')"><span class="tag n">${esc(a.ind)}</span><span class="yr">BATCH ${a.y}</span></div>
-        <div class="bd"><h3>${esc(a.n)}</h3><div class="meta">${esc(a.r)} · ${esc(a.co)}</div><a class="more" href="#profile/${a.id}">View profile <span>→</span></a></div></article>`).join("")}
     </div>
   </div>
 </section>
@@ -256,57 +253,20 @@ ${phero("Alumni Network","Discover your alumni network","Find batchmates, mentor
   <div class="wrap">
     <div class="bar reveal">
       <input class="field" id="fq" placeholder="Search name, company or skill" aria-label="Search">
-      <select class="field" id="fy" aria-label="Graduation year"><option value="">Any year</option>${[...new Set(ALUMNI.map(a=>a.y))].sort((a,b)=>b-a).map(y=>`<option value="${y}">${y}</option>`).join("")}</select>
-      <select class="field" id="fd" aria-label="Department"><option value="">Any department</option>${DEPTS.map(x=>`<option>${x}</option>`).join("")}</select>
-      <select class="field" id="fi" aria-label="Industry"><option value="">Any industry</option>${INDUSTRIES.map(x=>`<option>${x}</option>`).join("")}</select>
-      <select class="field" id="fc" aria-label="Country"><option value="">Any country</option>${COUNTRIES.map(x=>`<option>${x}</option>`).join("")}</select>
+      <select class="field" id="fy" aria-label="Graduation year"><option value="">Any year</option></select>
+      <select class="field" id="fi" aria-label="Industry"><option value="">Any industry</option></select>
+      <select class="field" id="fc" aria-label="Country"><option value="">Any country</option></select>
       <select class="field" id="fs" aria-label="Sort"><option value="name">Name A–Z</option><option value="new">Newest batch</option><option value="old">Oldest batch</option></select>
     </div>
     <div class="bar2"><div class="chips" id="chipsAl"></div><span class="count" id="ct"></span></div>
     <div class="grid g3" id="alGrid"></div>
-    <div class="empty" id="alEmpty"><h3>No alumni match these filters</h3><p>Try clearing a filter.</p></div>
+    <div class="empty" id="alEmpty"><h3>No alumni to show yet</h3><p id="alEmptyMsg">Try clearing a filter.</p></div>
     <div class="loadmore"><button class="btn btn-line" id="lm">Load more</button></div>
     <p class="count" style="text-align:center;margin-top:22px">Only profiles alumni have chosen to make public are shown.</p>
   </div>
 </section>`;
 
-V.profile=(id)=>{
-  const a=ALUMNI.find(x=>x.id===id);
-  if(!a||!a.pub) return notFound("Profile not available","This profile is private or does not exist.");
-  const similar=ALUMNI.filter(x=>x.pub&&x.id!==a.id&&(x.ind===a.ind||x.city===a.city)).slice(0,3);
-  return `
-  <section class="sec" style="padding:0">
-    <div class="cover" style="background-image:url('${U(a.cov,2000)}')"></div>
-    <div class="wrap">
-      <div class="pro-head reveal">
-        <div class="pro-photo" style="background-image:url('${U(a.ph,600)}')"></div>
-        <div style="padding-bottom:10px"><span class="tag">Batch ${a.y}</span><h1 style="margin-top:12px">${esc(a.n)}</h1><div class="sub"><span>${esc(a.r)} at ${esc(a.co)}</span><span>📍 ${esc(a.city)}, ${esc(a.ctry)}</span><span>🎓 ${esc(a.d)}</span></div></div>
-      </div>
-      <div class="pro-grid">
-        <div class="reveal">
-          <div class="card" style="padding:32px"><div class="kicker">Introduction</div><p style="font-size:1.07rem;color:#334155">${esc(a.intro)}</p></div>
-          <div class="card" style="padding:32px;margin-top:22px"><div class="kicker">Career</div><div class="tl">${a.exp.map(e=>`<div><small>${esc(e[0])}</small><b>${esc(e[1])}</b><span>${esc(e[2])}</span></div>`).join("")}</div></div>
-          <div class="card" style="padding:32px;margin-top:22px"><div class="kicker">Education</div><div class="tl">${a.edu.map(e=>`<div><small>${esc(e[0])}</small><b>${esc(e[1])}</b><span>${esc(e[2])}</span></div>`).join("")}</div></div>
-          <div class="card" style="padding:32px;margin-top:22px"><div class="kicker">Skills & expertise</div><div class="pill-list">${a.skills.map(s=>`<span>${esc(s)}</span>`).join("")}</div></div>
-          ${a.ach.length?`<div class="card" style="padding:32px;margin-top:22px"><div class="kicker">Achievements</div>${a.ach.map(x=>`<div class="ach">🏆 ${esc(x)}</div>`).join("")}</div>`:""}
-        </div>
-        <aside class="side reveal d1">
-          <div class="card" style="padding:28px">
-            <div class="row"><div class="ic">${svg("M3 7h18v13H3zM9 7V5h6v2",20)}</div><div><small>Company</small><b>${esc(a.co)}</b></div></div>
-            <div class="row"><div class="ic">${svg(ICO.pin,20)}</div><div><small>Location</small><b>${esc(a.city)}, ${esc(a.ctry)}</b></div></div>
-            <div class="row"><div class="ic">${svg("M3 12h18M12 3v18",20)}</div><div><small>Industry</small><b>${esc(a.ind)}</b></div></div>
-            <div class="pri">
-              ${a.contact?`<button class="btn btn-em" id="connectBtn" data-id="${a.id}">Connect</button>`:`<button class="btn btn-line" disabled>Contact hidden by alumni</button>`}
-              <button class="btn btn-line" disabled>LinkedIn profile</button>
-            </div>
-            <div class="privacy">${svg("M5 11h14v10H5zM8 11V7a4 4 0 018 0v4",16,2)}Contact details are shared only if the alumni allows it.</div>
-          </div>
-        </aside>
-      </div>
-      ${similar.length?`<div style="margin:70px 0 0"><div class="sec-h"><div><div class="kicker">You may know</div><h2>Other alumni</h2></div></div><div class="grid g3">${similar.map(s=>`<article class="card reveal"><div style="display:flex;gap:14px;align-items:center"><div class="av" style="background-image:url('${U(s.ph,300)}')"></div><div><h3>${esc(s.n)}</h3><div style="font-size:.86rem;color:var(--muted)">${esc(s.r)} · ${s.y}</div></div></div><a class="more" style="margin-top:16px" href="#profile/${s.id}">View profile <span>→</span></a></article>`).join("")}</div></div>`:""}
-    </div>
-  </section>`;
-};
+V.profile=()=>`<section class="sec" style="padding:0"><div id="proBox"><div class="wrap" style="padding:90px 0"><p>Loading profile…</p></div></div></section>`;
 
 V.jobs=()=>`
 ${phero("Job Portal","Build your next career move","Openings shared by alumni, for alumni","Search by role, company or city, and filter by industry, type, experience and date posted.","photo-1521737604893-d14cc237f11d",[[JOBS.length,"Live openings"],[new Set(JOBS.map(j=>j.co)).size,"Employers"]])}
@@ -569,3 +529,6 @@ export function notFound(t,p){return `<section class="phero" style="min-height:3
 
 V.me=()=>`
 <section class="sec" style="padding-top:70px"><div class="wrap" style="max-width:860px"><div id="meBox"><p>Loading…</p></div></div></section>`;
+
+V.admin=()=>`
+<section class="sec" style="padding-top:70px"><div class="wrap"><div class="sec-h"><div><div class="kicker">Administrator</div><h2>Verify alumni</h2></div></div><div id="adBox"><p>Loading…</p></div></div></section>`;
