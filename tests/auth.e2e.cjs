@@ -44,7 +44,7 @@ function makeBackend(opts = {}) {
     if (url.pathname === "/auth/v1/recover") return json(200, {});
     if (url.pathname === "/rest/v1/site_stats") return json(200, [{ verified_members: 12, open_jobs: 3, upcoming_events: 1, published_articles: 0, countries: 2 }]);
     if (url.pathname === "/rest/v1/testimonials") return json(200, opts.testimonials || []);
-    if (url.pathname === "/rest/v1/app_admins") return json(200, st.admins && st.admins.includes(uidFromAuth()) ? [{ user_id: uidFromAuth() }] : []);
+    if (url.pathname === "/rest/v1/rpc/my_access") return json(200, st.admins && st.admins.includes(uidFromAuth()) ? { superadmin: true, roles: ["Superadmin"], permissions: ["dashboard.view","members.review","jobs.review","jobs.publish","events.manage","articles.publish","articles.review","reports.handle","messages.read","site.manage","audit.view","roles.manage"] } : { superadmin: false, roles: [], permissions: [] });
     if (url.pathname === "/rest/v1/profiles") {
       const id = (url.searchParams.get("id") || "").replace("eq.", "");
       if (!hdr.authorization) return json(401, { message: "permission denied for table profiles" });

@@ -112,3 +112,10 @@ Authentication, email delivery, RLS/permissions, storage, moderation, admin, rea
 - `tests/smoke.cjs`: 80/80, `auth.e2e`: 32/32, `members.e2e`: 32/32, database: 147/147.
 - The rules that matter most (members cannot approve or feature their own job, edits go back to review, apply email hidden from anonymous visitors) are enforced and tested in the database itself.
 - **Not yet verified on the real service** (needs a real account on the live site).
+
+## Staff roles and panel
+- `tests/db/run.sh`: 194/194 pass on a clean database with migrations 1-8 (adds the permission matrix: members cannot grant roles, anon blocked from every function, faculty/admin/superadmin/custom-role limits, last-Superadmin protection, locked Superadmin role, roles in use cannot be deleted, removing a permission takes effect immediately, faculty job posts go live while member posts wait).
+- `tests/staff.e2e.cjs`: 35/35 pass (mock Supabase): per-role sidebar, real dashboard numbers, escaping, staff and roles management with friendly errors, messages inbox, contact form, staff publishing a job.
+- `tests/smoke.cjs` 80/80, `auth.e2e` 33/33, `members.e2e` 32/32, `jobs.e2e` 43/43 (mocks updated for the new role functions).
+- Migration 8 applied to the live project and checked by SQL (12 permissions, 3 roles, old admin table gone, no staff yet) and by the security advisor.
+- **Not yet verified on the real service:** signing in as a Superadmin and using the panel (needs the owner's account).

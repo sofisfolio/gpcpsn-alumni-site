@@ -28,7 +28,9 @@ function makeBackend(o = {}) {
     if (P === "/rest/v1/site_stats") return json(200, [{}]);
     if (P === "/rest/v1/testimonials" || P === "/rest/v1/featured_alumni_public") return json(200, []);
     if (P === "/rest/v1/jobs_public") { const i = eq("id"); const rows = i ? st.pub.filter((j) => j.id === i) : st.pub; return json(200, rows.map((j) => hdr.authorization ? j : { ...j, apply_email: null })); }
-    if (P === "/rest/v1/app_admins") return json(200, st.admins.includes(uid) ? [{ user_id: uid }] : []);
+    if (P === "/rest/v1/rpc/my_access") return json(200, st.admins.includes(uid) ? { superadmin: true, roles: ["Superadmin"], permissions: ["dashboard.view","members.review","jobs.review","jobs.publish","events.manage","articles.publish","articles.review","reports.handle","messages.read","site.manage","audit.view","roles.manage"] } : { superadmin: false, roles: [], permissions: [] });
+    if (P === "/rest/v1/rpc/admin_dashboard") return json(200, { members_pending: 1, members_verified: 2, jobs_pending: 1, jobs_live: 1, reports_open: 0, messages_new: 0, events_upcoming: 0, articles_pending: 0 });
+    if (P === "/rest/v1/rpc/admin_recent_activity") return json(200, []);
     if (P === "/rest/v1/profiles") { if (m === "GET") { const inq = q("id"); if (inq.startsWith("in.")) return json(200, Object.values(st.profiles).filter((p) => inq.includes(p.id))); return json(200, st.profiles[uid] && eq("id") === uid ? [st.profiles[uid]] : []); } }
     if (P === "/rest/v1/jobs") {
       if (m === "POST") { st.posted.push(body); return json(201, [{ ...body, id: id(900) }]); }
@@ -153,8 +155,8 @@ const U = "http://localhost:8097/";
     const live = { ...pend, id: id(32), title: "Live <b>Role</b>", status: "approved" };
     const b = makeBackend({ admins: [id(50)], profiles: { ...member(50), ...member(40) }, jobs: [pend, live], reports: [{ id: id(61), entity_type: "job", entity_id: id(32), reason: "Looks like a scam", status: "open", created_at: "2026-11-22T00:00:00Z" }] });
     const { ctx, page, errs } = await open(browser, b, id(50));
-    await page.goto(U + "#admin"); await page.waitForSelector("#adSecs"); await page.click("[data-s=jobs]"); await page.waitForSelector("#adList article");
-    let t = await page.textContent("#adList");
+    await page.goto(U + "#admin/jobs"); await page.waitForSelector("#adMain article");
+    let t = await page.textContent("#adMain");
     rec("admin sees waiting jobs with poster name", t.includes("Bridge Engineer") && t.includes("Member 40") && !t.includes("Live"));
     await page.click("[data-act=rejected]"); await page.click("#adForm button[type=submit]");
     rec("rejecting a job needs a reason", (await page.textContent("#adErr")).includes("short reason") && b.st.patches.length === 0);
@@ -165,9 +167,9 @@ const U = "http://localhost:8097/";
     rec("approve sets status=approved", b.st.patches.some((x) => x.id === id(31) && x.body.status === "approved" && x.body.rejection_reason === null));
     await page.click("[data-t=approved]"); await page.waitForSelector("[data-act=feature]"); await page.click("[data-act=feature]"); await page.waitForTimeout(300);
     rec("feature toggles without a dialog", b.st.patches.some((x) => x.body.featured === true));
-    rec("job text is escaped in admin screen", (await page.$("#adList b")) === null);
-    await page.click("[data-s=reports]"); await page.waitForSelector("#adList article");
-    t = await page.textContent("#adList");
+    rec("job text is escaped in admin screen", (await page.$("#adMain b")) === null);
+    await page.click("a[href=\"#admin/reports\"]"); await page.waitForFunction(() => /Looks like a scam/.test(document.querySelector("#adMain").textContent));
+    t = await page.textContent("#adMain");
     rec("admin sees the open report with its reason", t.includes("Looks like a scam") && t.includes("Live"));
     await page.click("[data-act=takedown]"); await page.fill("#adNote", "Reported as a scam"); await page.click("#adForm button[type=submit]"); await page.waitForTimeout(400);
     rec("take down rejects the job and resolves the report", b.st.patches.some((x) => x.id === id(32) && x.body.status === "rejected" && x.body.rejection_reason === "Reported as a scam") && b.st.patches.some((x) => x.report === id(61) && x.body.status === "resolved"));

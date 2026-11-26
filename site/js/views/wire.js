@@ -7,6 +7,7 @@ import {friendly,loadMe} from '../services/auth.js';
 import {listAlumni,getAlumnus,isId} from '../services/directory.js';
 import {storage} from '../lib/supa.js';
 import {listJobs,getJob,submitJob,myJobs,withdrawJob,deleteJob,reportJob,TYPE,MODE,lines} from '../services/jobs.js';
+import {adminWire} from './admin.js';
 import {ALUMNI,JOBS,EVENTS,NEWS} from '../data/dev-sample.js';
 export function wire(p,arg){
   motion(app);bars(app);
@@ -23,7 +24,8 @@ export function wire(p,arg){
   if(p==="blog")blogWire(arg);
   if(p==="login")loginWire(arg);
   if(p==="me")meWire();
-  if(p==="admin")adminWire();
+  if(p==="admin")adminWire(arg);
+  if(p==="contact")contactWire();
 }
 
 /* home */
@@ -251,7 +253,7 @@ function postWire(){
   const f=$("#pj");
   const gateBox=(inner)=>{$("#pjForm").innerHTML=`<div style="text-align:center;padding:30px 10px"><div class="ic dark" style="margin:0 auto 18px;width:68px;height:68px;border-radius:50%">${LOCK_ICON}</div>${inner}</div>`};
   if(!S.auth){gateBox(`<h2 style="font-size:1.5rem">Sign in to post a job</h2><p style="margin:10px 0 22px">Only verified alumni can submit openings for the network.</p><div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><a href="#login" class="btn btn-em">Sign in</a><a href="#login/join" class="btn btn-line">Create account</a></div>`);return}
-  if(!S.profile||S.profile.verification_status!=="verified"){gateBox(`<h2 style="font-size:1.5rem">Your account is not verified yet</h2><p style="margin:10px 0 22px">Jobs can be posted once the alumni cell has verified you. ${S.profile&&S.profile.verification_status==="rejected"?"Please correct your details on your profile page.":"Meanwhile, complete your profile."}</p><a href="#me" class="btn btn-em">Go to my profile</a>`);return}
+  if(!S.isAdmin&&(!S.profile||S.profile.verification_status!=="verified")){gateBox(`<h2 style="font-size:1.5rem">Your account is not verified yet</h2><p style="margin:10px 0 22px">Jobs can be posted once the alumni cell has verified you. ${S.profile&&S.profile.verification_status==="rejected"?"Please correct your details on your profile page.":"Meanwhile, complete your profile."}</p><a href="#me" class="btn btn-em">Go to my profile</a>`);return}
   if(!f)return;
   const setErr=(el,ok,msg)=>{el.classList.toggle("bad",!ok);const er=el.parentElement.querySelector(".err");if(er)er.textContent=ok?"":msg};
   f.onsubmit=async e=>{
@@ -273,11 +275,14 @@ function postWire(){
     if(!ok)return;
     const btn=f.querySelector("button[type=submit]");btn.disabled=true;
     try{
-      await submitJob({submitted_by:auth.getSession().user.id,title:v("t"),company:v("co"),company_website:web||null,location:v("loc"),industry:v("ind")||null,
+      const made=await submitJob({submitted_by:auth.getSession().user.id,title:v("t"),company:v("co"),company_website:web||null,location:v("loc"),industry:v("ind")||null,
         employment_type:f.type.value,work_mode:f.mode.value,salary_text:v("sal")||null,experience_min_years:emin,experience_max_years:emax,
         description:v("desc"),responsibilities:v("resp")||null,qualifications:v("qual")||null,
         skills:v("skills").split(",").map(x=>x.trim().slice(0,40)).filter(Boolean).slice(0,20),apply_url,apply_email,deadline:dl||null});
-      $("#pjForm").style.display="none";$("#pjDone").style.display="block";toast("Job submitted for approval");$("#pjAgain").onclick=()=>hooks.route();
+      const live=!!(made&&made[0]&&made[0].status==="approved");
+      $("#pjForm").style.display="none";$("#pjDone").style.display="block";
+      if(live){const h=$("#pjDone h2"),pp=$("#pjDone p");if(h)h.textContent="Your job is live";if(pp)pp.textContent="It is published straight away because of your role. You can see it in the Job portal.";}
+      toast(live?"Job published":"Job submitted for approval");$("#pjAgain").onclick=()=>hooks.route();
     }catch(err){setErr(f.link,false,/check constraint|violates/i.test(err.message)?"Some details are not valid. Please check the fields.":friendly(err))}
     finally{btn.disabled=false}
   };
@@ -543,77 +548,21 @@ async function meWire(){
   };
 }
 
-/* administrator: verify alumni, review jobs, handle reports */
-async function adminWire(){
-  const box=$("#adBox");if(!box)return;
-  if(!auth.getSession()){box.innerHTML=`<p>Please <a class="more" href="#login">sign in</a> as an administrator.</p>`;return}
-  if(!S.isAdmin){box.innerHTML=`<p>This page is for administrators only.</p>`;return}
-  let sec="members",tab="pending";
-  const SECTIONS=[["members","Alumni"],["jobs","Jobs"],["reports","Reports"]];
-  const TABS={members:[["pending","Waiting"],["verified","Verified"],["rejected","Rejected"],["suspended","Suspended"],["all","Everyone"]],
-              jobs:[["pending","Waiting"],["approved","Live"],["rejected","Not approved"],["all","Everyone"]],reports:[]};
-  const shell=()=>{box.innerHTML=`<div class="chips" id="adSecs" style="margin-bottom:12px">${SECTIONS.map(t=>`<button class="chip ${t[0]===sec?"on":""}" data-s="${t[0]}">${t[1]}</button>`).join("")}</div>
-    ${TABS[sec].length?`<div class="chips" id="adTabs" style="margin-bottom:18px">${TABS[sec].map(t=>`<button class="chip ${t[0]===tab?"on":""}" data-t="${t[0]}">${t[1]}</button>`).join("")}</div>`:""}<div id="adList"><p>Loading…</p></div>`};
-  const day=d=>esc(new Date(d).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}));
-  const btns=a=>a.filter(Boolean).map(x=>`<button class="btn ${x[2]||"btn-line"} btn-sm" data-act="${x[0]}">${x[1]}</button>`).join("");
-  const row=(id,head,sub,meta,actions,extra="")=>`<article class="card" style="padding:20px 24px;margin-bottom:14px" data-id="${esc(id)}" ${extra}><div style="display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start"><div style="min-width:0;flex:1 1 320px">${head}<div style="color:var(--muted);font-size:.9rem;margin-top:4px;word-break:break-word">${sub}</div><div style="color:var(--muted);font-size:.82rem;margin-top:2px">${meta}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap">${actions}</div></div></article>`;
-
-  const loaders={
-    async members(list){
-      const rows=await db.rpc("admin_list_members",{p_status:tab==="all"?null:tab});
-      list.innerHTML=rows.length?rows.map(r=>row(r.id,`<h3 style="font-size:1.1rem">${esc(r.full_name||"(no name)")} <span class="tag" style="vertical-align:middle">${esc(r.verification_status)}</span></h3>`,
-        `${esc(r.email)} · Batch ${esc(r.graduation_year??"?")} · Enrolment: ${esc(r.enrollment_no||"not given")}${r.current_company?" · "+esc(r.current_company):""}${r.city?" · "+esc(r.city):""}`,
-        `Registered ${day(r.created_at)}${r.verification_note?` · Note: ${esc(r.verification_note)}`:""}`,
-        btns([r.verification_status!=="verified"?["verified",r.verification_status==="suspended"?"Reinstate":"Verify","btn-em"]:null,
-              ["pending","verified"].includes(r.verification_status)?["rejected","Reject"]:null,r.verification_status==="verified"?["suspended","Suspend"]:null]))).join(""):`<p>${tab==="pending"?"Nobody is waiting for verification.":"Nobody here."}</p>`;
-    },
-    async jobs(list){
-      const rows=await db.select("jobs","*",{...(tab==="all"?{}:{status:"eq."+tab}),order:"created_at.desc",limit:"200"});
-      const ids=[...new Set(rows.map(r=>r.submitted_by))];
-      const names={};if(ids.length)(await db.select("profiles","id,full_name",{id:"in.("+ids.join(",")+")"})).forEach(p=>names[p.id]=p.full_name);
-      list.innerHTML=rows.length?rows.map(r=>row(r.id,`<h3 style="font-size:1.1rem">${esc(r.title)} <span class="tag" style="vertical-align:middle">${esc(r.status)}</span>${r.featured?' <span class="tag g">Featured</span>':""}</h3>`,
-        `${esc(r.company)} · ${esc(r.location)} · ${esc(TYPE[r.employment_type]||"")} · Apply: ${esc(r.apply_url||r.apply_email||"")}<br><span style="white-space:pre-line">${esc(r.description.slice(0,400))}${r.description.length>400?"…":""}</span>`,
-        `Posted by ${esc(names[r.submitted_by]||"unknown")} on ${day(r.created_at)}${r.rejection_reason?` · Reason: ${esc(r.rejection_reason)}`:""}`,
-        btns([r.status!=="approved"?["approved","Approve","btn-em"]:null,["pending","approved"].includes(r.status)?["rejected",r.status==="approved"?"Take down":"Reject"]:null,
-              r.status==="approved"?[r.featured?"unfeature":"feature",r.featured?"Unfeature":"Feature"]:null]))).join(""):`<p>${tab==="pending"?"No jobs are waiting for review.":"Nothing here."}</p>`;
-    },
-    async reports(list){
-      const rows=await db.select("content_reports","*",{status:"eq.open",order:"created_at.desc",limit:"100"});
-      const ids=[...new Set(rows.map(r=>r.entity_id))];
-      const jobs={};if(ids.length)(await db.select("jobs","id,title,company,status",{id:"in.("+ids.join(",")+")"})).forEach(j=>jobs[j.id]=j);
-      list.innerHTML=rows.length?rows.map(r=>{const j=jobs[r.entity_id];return row(r.id,`<h3 style="font-size:1.1rem">Report on ${j?esc(j.title)+" · "+esc(j.company):"a removed listing"}</h3>`,`“${esc(r.reason)}”`,`Reported ${day(r.created_at)}${j?` · Listing is ${esc(j.status)}`:""}`,
-        btns([j&&j.status==="approved"?["takedown","Take down listing","btn-em"]:null,["dismiss","Dismiss report"]]),`data-job="${esc(r.entity_id)}"`)}).join(""):`<p>No open reports.</p>`;
-    }
-  };
-  const load=async()=>{const list=$("#adList");if(!list)return;try{await loaders[sec](list)}catch(err){list.innerHTML=`<p>${esc(friendly(err))}</p>`}};
-  shell();load();
-
-  const doIt=async(act,id,jobId,note)=>{
-    if(sec==="members")return db.update("profiles",{id:"eq."+id},{verification_status:act,verification_note:note||null});
-    if(sec==="jobs"){
-      if(act==="feature"||act==="unfeature")return db.update("jobs",{id:"eq."+id},{featured:act==="feature"});
-      return db.update("jobs",{id:"eq."+id},{status:act,rejection_reason:act==="rejected"?note:null});
-    }
-    if(act==="dismiss")return db.update("content_reports",{id:"eq."+id},{status:"dismissed"});
-    await db.update("jobs",{id:"eq."+jobId},{status:"rejected",rejection_reason:note});
-    return db.update("content_reports",{id:"eq."+id},{status:"resolved"});
-  };
-  box.onclick=e=>{
-    const sb=e.target.closest("[data-s]");if(sb){sec=sb.dataset.s;tab=TABS[sec][0]?TABS[sec][0][0]:"";shell();load();return}
-    const t=e.target.closest("[data-t]");if(t){tab=t.dataset.t;shell();load();return}
-    const b=e.target.closest("[data-act]");if(!b)return;
-    const card=b.closest("[data-id]"),id=card.dataset.id,jobId=card.dataset.job,act=b.dataset.act;
-    if(!isId(id)||(jobId&&!isId(jobId)))return;
-    const quick=["feature","unfeature","dismiss"].includes(act);
-    const run=async note=>{try{await doIt(act,id,jobId,note);closeModal();toast("Updated");load()}catch(err){const el=$("#adErr");if(el)el.textContent=friendly(err);else toast(friendly(err))}};
-    if(quick){run("");return}
-    const need=["rejected","suspended","takedown"].includes(act)&&!(sec==="members"&&act==="verified");
-    const titles={verified:"Verify this alumnus?",rejected:"Reject",suspended:"Suspend this account",approved:"Approve this job?",pending:"Return to review?",takedown:"Take this listing down"};
-    openModal(`<h2 style="font-size:1.35rem">${esc(titles[act]||"Confirm")}</h2>
-      <form id="adForm" style="margin-top:14px"><label for="adNote">${need?"Reason (the member will see this) *":"Note (optional)"}</label><textarea class="field" id="adNote" rows="3" maxlength="500"></textarea><div class="err" id="adErr"></div>
-      <div style="display:flex;gap:10px;margin-top:16px"><button class="btn btn-em" type="submit">Confirm</button><button class="btn btn-line" type="button" id="adCancel">Cancel</button></div></form>`);
-    $("#adCancel").onclick=closeModal;
-    $("#adForm").onsubmit=ev=>{ev.preventDefault();const note=$("#adNote").value.trim();if(need&&note.length<3){$("#adErr").textContent="Please give a short reason.";return}run(note)};
+/* contact form -> contact_messages (read by staff with the "messages.read" permission) */
+function contactWire(){
+  const f=$("#ctForm");if(!f)return;
+  const setErr=(el,ok,msg)=>{el.classList.toggle("bad",!ok);const er=el.parentElement.querySelector(".err");if(er)er.textContent=ok?"":msg};
+  f.onsubmit=async e=>{
+    e.preventDefault();let ok=true;const v=n=>f[n].value.trim();
+    const chk=(n,good,msg)=>{setErr(f[n],good,msg);if(!good)ok=false};
+    chk("n",v("n").length>=2,"Please enter your name");
+    chk("e",EMAIL_RE.test(v("e"))&&v("e").length<=254,"Enter a valid email");
+    chk("m",v("m").length>=10,"Please write at least 10 characters");
+    if(!ok)return;
+    const btn=f.querySelector("button[type=submit]");btn.disabled=true;
+    try{await db.insert("contact_messages",{name:v("n"),email:v("e"),message:v("m")});f.style.display="none";$("#ctDone").style.display="block";toast("Message sent")}
+    catch(err){setErr(f.m,false,/check constraint|violates/i.test(err.message)?"Some details are not valid. Please check the fields.":friendly(err))}
+    finally{btn.disabled=false}
   };
 }
 

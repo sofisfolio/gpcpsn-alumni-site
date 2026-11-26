@@ -33,7 +33,9 @@ function makeBackend(o = {}) {
     if (P === "/rest/v1/directory_contact") { if (!hdr.authorization) return json(401, { message: "permission denied for view directory_contact" }); const c = st.contact[eq("profile_id")]; return json(200, c ? [c] : []); }
     if (P === "/rest/v1/profile_experience") return json(200, eq("profile_id") === id(1) ? [{ title: "Site Engineer", organisation: "Acme Infra", start_year: 2016, end_year: null }] : []);
     if (P === "/rest/v1/profile_education") return json(200, []);
-    if (P === "/rest/v1/app_admins") return json(200, st.admins.includes(uid) ? [{ user_id: uid }] : []);
+    if (P === "/rest/v1/rpc/my_access") return json(200, st.admins.includes(uid) ? { superadmin: true, roles: ["Superadmin"], permissions: ["dashboard.view","members.review","jobs.review","jobs.publish","events.manage","articles.publish","articles.review","reports.handle","messages.read","site.manage","audit.view","roles.manage"] } : { superadmin: false, roles: [], permissions: [] });
+    if (P === "/rest/v1/rpc/admin_dashboard") return json(200, { members_pending: 1, members_verified: 2, jobs_pending: 1, jobs_live: 1, reports_open: 0, messages_new: 0, events_upcoming: 0, articles_pending: 0 });
+    if (P === "/rest/v1/rpc/admin_recent_activity") return json(200, []);
     if (P === "/rest/v1/rpc/admin_list_members") { if (!st.admins.includes(uid)) return json(403, { message: "not_admin", code: "42501" }); const s = body.p_status; return json(200, st.members.filter((x) => !s || x.verification_status === s)); }
     if (P === "/rest/v1/profiles") {
       if (m === "GET") return json(200, st.profile && eq("id") === uid ? [st.profile] : []);
@@ -125,26 +127,26 @@ const DIR = [person(1, "Rahul Shinde", { linkedin_url: "https://www.linkedin.com
       { id: id(71), full_name: "Old Member", email: "old@example.test", graduation_year: 2009, enrollment_no: null, current_company: "Acme", city: null, verification_status: "verified", verification_note: null, created_at: "2026-10-01T10:00:00Z" }];
     const b = makeBackend({ admins: [id(80)], members });
     const { ctx, page, errs } = await open(browser, b, id(80)); b.st.profile = { id: id(80), full_name: "Admin Person", verification_status: "verified", skills: [] };
-    await page.goto("http://localhost:8096/#admin"); await page.waitForSelector("#adList article");
+    await page.goto("http://localhost:8096/#admin/members"); await page.waitForSelector("#adMain article");
     rec("Admin link visible to administrators", await page.$eval("#adminLink", (e) => getComputedStyle(e).display !== "none"));
-    const t = await page.textContent("#adList");
+    const t = await page.textContent("#adMain");
     rec("waiting list shows email, batch and enrolment number", t.includes("neha@example.test") && t.includes("2015") && t.includes("CE-15-04") && !t.includes("Old Member"));
-    rec("member names are escaped in the admin list", (await page.$("#adList b")) === null);
+    rec("member names are escaped in the admin list", (await page.$("#adMain b")) === null);
     await page.click("[data-act=rejected]"); await page.fill("#adNote", ""); await page.click("#adForm button[type=submit]");
     rec("rejecting without a reason is refused", (await page.textContent("#adErr")).includes("short reason") && !b.st.calls.some((c) => c.m === "PATCH"));
     await page.fill("#adNote", "Enrolment number not found"); await page.click("#adForm button[type=submit]");
-    await page.waitForFunction(() => /Nobody is waiting/.test(document.querySelector("#adList").textContent));
+    await page.waitForFunction(() => /Nobody is waiting/.test(document.querySelector("#adMain").textContent));
     const pr = b.st.calls.filter((c) => c.m === "PATCH").pop();
     rec("reject sends status and reason", pr.body.verification_status === "rejected" && pr.body.verification_note === "Enrolment number not found" && pr.q.includes("id=eq." + id(70)));
-    await page.click("[data-t=rejected]"); await page.waitForSelector("#adList article");
+    await page.click("[data-t=rejected]"); await page.waitForSelector("#adMain article");
     await page.click("[data-act=verified]"); await page.click("#adForm button[type=submit]");
-    await page.waitForFunction(() => /Nobody here/.test(document.querySelector("#adList").textContent));
+    await page.waitForFunction(() => /Nobody here/.test(document.querySelector("#adMain").textContent));
     rec("verify works without a note", b.st.members[0].verification_status === "verified" && b.st.members[0].verification_note === null);
     rec("no JS errors", errs.length === 0, errs.join("|")); await ctx.close(); }
 
   /* F. non-admin cannot use the admin page */
   { const b = makeBackend({}); const { ctx, page } = await open(browser, b, id(90)); b.st.profile = { id: id(90), full_name: "Plain Member", verification_status: "verified", skills: [] };
-    await page.goto("http://localhost:8096/#admin"); await page.waitForFunction(() => /administrators only/.test(document.querySelector("#adBox").textContent));
+    await page.goto("http://localhost:8096/#admin"); await page.waitForFunction(() => /for the alumni cell and faculty/.test(document.querySelector("#adBox").textContent));
     rec("members see 'administrators only' and no Admin link", !(await page.$eval("#adminLink", (e) => getComputedStyle(e).display !== "none")) && !b.st.calls.some((c) => c.path.includes("admin_list_members")));
     await ctx.close();
     const o = await open(browser, makeBackend({})); await o.page.goto("http://localhost:8096/#admin"); await o.page.waitForSelector("#adBox a");

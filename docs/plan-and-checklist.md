@@ -48,3 +48,11 @@ Legend: [x] done and verified, [~] partly, [ ] not started, [!] needs the owner.
 - Listings with a past deadline disappear automatically. Editing a live listing sends it back for review. Members can withdraw or delete their own.
 - Any verified member can report a listing; an administrator can take it down from Admin → Reports.
 - Not built yet: company logo upload for jobs (logos show the company initials).
+
+## Staff roles and panel (added after Phase 4, at the owner's request)
+- [x] Editable roles and permissions in the database (migration 8), enforced by policies and triggers; 47 new database tests
+- [x] Staff panel with sidebar (Dashboard with real counts, Alumni, Jobs, Reports, Messages, Staff & roles, Activity log), shown per permission
+- [x] Faculty/staff with `jobs.publish` can post jobs that go live directly; public contact form stores messages for staff
+- [x] Applied to the live database; advisors checked (only the known, intentional findings)
+- [!] The owner must register on the live site, then run `docs/admin-bootstrap.sql` once to become Superadmin (the panel stays empty until then)
+- [ ] Events, articles and site-content (testimonials, featured alumni, settings) screens in the panel arrive with Phases 5-7; their permissions already exist

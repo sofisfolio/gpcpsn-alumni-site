@@ -493,4 +493,16 @@ V.me=()=>`
 <section class="sec" style="padding-top:70px"><div class="wrap" style="max-width:860px"><div id="meBox"><p>Loading…</p></div></div></section>`;
 
 V.admin=()=>`
-<section class="sec" style="padding-top:70px"><div class="wrap"><div class="sec-h"><div><div class="kicker">Administrator</div><h2>Verify alumni</h2></div></div><div id="adBox"><p>Loading…</p></div></div></section>`;
+<section class="sec adm-sec"><div class="wrap adm-wrap" id="adBox"><p>Loading…</p></div></section>`;
+
+V.contact=()=>`
+${phero("Contact","Write to the alumni cell","Questions about joining, verification or events. We read every message.","","photo-1497366216548-37526070297c",[])}
+<section class="sec"><div class="wrap" style="max-width:680px"><div class="card" style="padding:32px">
+  <form id="ctForm" novalidate><div class="g-form">
+    <div><label for="ct_n">Your name *</label><input class="field" id="ct_n" name="n" maxlength="120" autocomplete="name"><div class="err"></div></div>
+    <div><label for="ct_e">Your email *</label><input class="field" id="ct_e" name="e" type="email" maxlength="254" autocomplete="email"><div class="err"></div></div>
+    <div class="full"><label for="ct_m">Message * <small style="color:var(--muted)">(at least 10 characters)</small></label><textarea class="field" id="ct_m" name="m" rows="6" maxlength="3000"></textarea><div class="err"></div></div>
+    <div class="full"><button class="btn btn-em" type="submit" style="width:100%">Send message <span>→</span></button></div>
+  </div></form>
+  <div id="ctDone" style="display:none;text-align:center;padding:20px 0"><div class="done-ico">✓</div><h2 style="font-size:1.5rem">Message sent</h2><p style="margin-top:10px">Thank you. The alumni cell will reply to the email you gave.</p></div>
+</div></div></section>`;
