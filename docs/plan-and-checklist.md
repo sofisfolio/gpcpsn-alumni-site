@@ -36,4 +36,5 @@ Legend: [x] done and verified, [~] partly, [ ] not started, [!] needs the owner.
 4. First administrator's email address (set by you in the Supabase dashboard; no public admin sign-up).
 
 ## Change log
+- 2026-11-26 Cloudflare production branch set to `phase-1-foundation`; build triggered.
 - 2026-11-26 v0.1.0: migrated prototype v17 into a multi-file static site; added dev preview banner; fixed off-canvas-menu sideways scroll and focusable hidden menu links; added tests and docs.
