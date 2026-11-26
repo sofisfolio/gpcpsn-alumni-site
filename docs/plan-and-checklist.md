@@ -17,7 +17,7 @@ Legend: [x] done and verified, [~] partly, [ ] not started, [!] needs the owner.
 - [x] `.gitignore`, `.env.example`, `_headers`, `config.js` (no secrets)
 - [x] Local git repository with milestone commits
 - [!] GitHub repository (private): GitHub is not linked to this session
-- [!] Cloudflare Pages project + staging URL: needs your Cloudflare account and the GitHub repo
+- [~] Cloudflare project created by the owner (Workers static assets, not classic Pages). `wrangler.jsonc` added so it publishes `site/` from branch `phase-1-foundation`. Staging URL pending confirmation
 
 ## Next phases (unchanged from the brief)
 2 Backend/DB/RLS/Storage/admin bootstrap, 3 Auth+profiles+directory (move router to History API), 4 Jobs, 5 Events, 6 Articles, 7 Dashboards+admin+site content, 8 Email+polish, 9 Testing+launch, 10 Handover.

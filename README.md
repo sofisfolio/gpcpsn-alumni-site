@@ -12,7 +12,7 @@ NODE_PATH=$(npm root -g) npm test   # smoke + parity tests (needs Playwright)
 ## Layout
 | Path | Purpose |
 |---|---|
-| `site/` | The deployable website (Cloudflare Pages "build output directory" = `site`, no build command) |
+| `site/` | The deployable website (Cloudflare serves it via `wrangler.jsonc`: assets directory `site`, no build step) |
 | `site/assets/css/` | Design system split from the prototype, loaded in cascade order |
 | `site/js/` | ES modules: router, ui chrome, per-page views, config |
 | `site/js/data/dev-sample.js` | **Dev-only** sample content from the prototype. Removed as real services land |
