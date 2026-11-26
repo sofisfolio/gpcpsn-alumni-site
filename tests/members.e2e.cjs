@@ -135,12 +135,12 @@ const DIR = [person(1, "Rahul Shinde", { linkedin_url: "https://www.linkedin.com
     await page.click("[data-act=rejected]"); await page.fill("#adNote", ""); await page.click("#adForm button[type=submit]");
     rec("rejecting without a reason is refused", (await page.textContent("#adErr")).includes("short reason") && !b.st.calls.some((c) => c.m === "PATCH"));
     await page.fill("#adNote", "Enrolment number not found"); await page.click("#adForm button[type=submit]");
-    await page.waitForFunction(() => /Nobody is waiting/.test(document.querySelector("#adMain").textContent));
+    await page.waitForFunction(() => /Nobody is waiting/.test(((document.querySelector("#adMain")||{}).textContent||"")));
     const pr = b.st.calls.filter((c) => c.m === "PATCH").pop();
     rec("reject sends status and reason", pr.body.verification_status === "rejected" && pr.body.verification_note === "Enrolment number not found" && pr.q.includes("id=eq." + id(70)));
     await page.click("[data-t=rejected]"); await page.waitForSelector("#adMain article");
     await page.click("[data-act=verified]"); await page.click("#adForm button[type=submit]");
-    await page.waitForFunction(() => /Nobody here/.test(document.querySelector("#adMain").textContent));
+    await page.waitForFunction(() => /Nobody here/.test(((document.querySelector("#adMain")||{}).textContent||"")));
     rec("verify works without a note", b.st.members[0].verification_status === "verified" && b.st.members[0].verification_note === null);
     rec("no JS errors", errs.length === 0, errs.join("|")); await ctx.close(); }
 

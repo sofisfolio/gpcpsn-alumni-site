@@ -56,3 +56,11 @@ Legend: [x] done and verified, [~] partly, [ ] not started, [!] needs the owner.
 - [x] Applied to the live database; advisors checked (only the known, intentional findings)
 - [!] The owner must register on the live site, then run `docs/admin-bootstrap.sql` once to become Superadmin (the panel stays empty until then)
 - [ ] Events, articles and site-content (testimonials, featured alumni, settings) screens in the panel arrive with Phases 5-7; their permissions already exist
+
+## Phases 5 and 6: events, news and blogs (done)
+- [x] Staff panel: **Events** (create/edit, banner, India time, seats, online link, agenda, speakers, publish/unpublish/cancel/delete draft, registrations list with copy-emails) and **News & blogs** (write, review queue, approve/reject with reason, unpublish, feature)
+- [x] Public Events, event page (register, cancel, online link for registrants), News, article page, and home-page sections now use real data; they stay hidden or empty until something is published
+- [x] Members' **Write** page (`#write`): drafts, submit for review, status and reviewer notes
+- [x] Sample events/news removed from the code; fake newsletter form replaced by a "write for the network" call to action
+- [ ] Still sample content: home "alumni stories", about/faculty pages, vision/mission text (need real content from the institute)
+- [ ] Testimonials, featured alumni, categories and site settings screens (Phase 7; the permission `site.manage` already exists)

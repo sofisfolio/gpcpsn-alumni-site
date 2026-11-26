@@ -168,7 +168,7 @@ const U = "http://localhost:8097/";
     await page.click("[data-t=approved]"); await page.waitForSelector("[data-act=feature]"); await page.click("[data-act=feature]"); await page.waitForTimeout(300);
     rec("feature toggles without a dialog", b.st.patches.some((x) => x.body.featured === true));
     rec("job text is escaped in admin screen", (await page.$("#adMain b")) === null);
-    await page.click("a[href=\"#admin/reports\"]"); await page.waitForFunction(() => /Looks like a scam/.test(document.querySelector("#adMain").textContent));
+    await page.click("a[href=\"#admin/reports\"]"); await page.waitForFunction(() => /Looks like a scam/.test(((document.querySelector("#adMain")||{}).textContent||"")));
     t = await page.textContent("#adMain");
     rec("admin sees the open report with its reason", t.includes("Looks like a scam") && t.includes("Live"));
     await page.click("[data-act=takedown]"); await page.fill("#adNote", "Reported as a scam"); await page.click("#adForm button[type=submit]"); await page.waitForTimeout(400);

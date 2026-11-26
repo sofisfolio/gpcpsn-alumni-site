@@ -305,6 +305,11 @@ select t.exec('faculty job posting goes live directly', :F, 'authenticated', $q$
 select t.exec('  ...it is approved and public', null, 'postgres', $q$select 1 from public.jobs_public where id='b0000000-0000-0000-0000-000000000077'$q$, 'count:1');
 select t.exec('member job posting still waits for review', null, 'postgres', $q$select 1 from public.jobs where status='pending'$q$, 'ok');
 
+select t.exec('anon cannot list registrants', null, 'anon', $q$select * from public.admin_event_registrations('e0000000-0000-0000-0000-000000000001')$q$, 'error:permission denied');
+select t.exec('member cannot list registrants', :A, 'authenticated', $q$select * from public.admin_event_registrations('e0000000-0000-0000-0000-000000000001')$q$, 'error:not_allowed');
+select t.exec('faculty lists registrants with email', :F, 'authenticated', $q$select * from public.admin_event_registrations('e0000000-0000-0000-0000-000000000001') where email like '%@example.test'$q$, 'count:2');
+select t.exec('custom role without events.manage cannot list registrants', :C, 'authenticated', $q$select * from public.admin_event_registrations('e0000000-0000-0000-0000-000000000001')$q$, 'error:not_allowed');
+
 -- ------------------------------------------------------------------ report
 \echo
 \echo ===== RESULTS =====

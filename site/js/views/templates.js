@@ -1,7 +1,7 @@
 /* View templates (HTML strings). Data now comes from ../data/dev-sample.js; swapped for services later. */
 import {$,esc,ini,U,P,dt,CAMPUS,batchYears} from '../lib/util.js';
 import {S} from '../state.js';
-import {ALUMNI,COUNTRIES,INDUSTRIES,DEPTS,JOBS,EVENTS,NEWS,GAL,STORIES,TESTI,FACULTY,fini,VISION,MISSION,PEO,PO,PSO,facCards,PH} from '../data/dev-sample.js';
+import {ALUMNI,COUNTRIES,INDUSTRIES,DEPTS,JOBS,GAL,STORIES,TESTI,FACULTY,fini,VISION,MISSION,PEO,PO,PSO,facCards,PH} from '../data/dev-sample.js';
 /* ============ view templates ============ */
 export const V={};
 export const ICO={
@@ -94,21 +94,17 @@ V.home=()=>`
   </div>
 </section>
 
-<section class="sec paper">
+<section class="sec paper" id="homeEvSec" style="display:none">
   <div class="wrap">
     <div class="sec-h reveal"><div><div class="kicker">Upcoming events</div><h2>Gather, learn, reconnect</h2></div><a href="#events" class="more">All events <span>→</span></a></div>
-    <div class="grid g3">
-      ${EVENTS.filter(e=>!dt(e.d).past).slice(0,3).map((e,i)=>{const f=dt(e.d);return `<article class="card ev reveal d${i}"><div class="dt"><b>${f.day}</b><small>${f.mon}</small></div><div class="ov"><div class="bg" style="background-image:url('${U(e.img,900)}')"></div></div><span class="tag ${e.cat==='Alumni reunions'?'':'n'}" style="align-self:flex-start">${esc(e.cat)}</span><h3 style="margin-top:12px">${esc(e.t)}</h3><div class="info"><span>🕘 ${esc(e.time)}</span><span>📍 ${esc(e.venue)}</span></div><a class="btn btn-navy btn-sm" href="#event/${e.id}" style="align-self:flex-start;margin-top:auto">Register now</a></article>`}).join("")}
-    </div>
+    <div class="grid g3" id="homeEv"></div>
   </div>
 </section>
 
-<section class="sec">
+<section class="sec" id="homeNewsSec" style="display:none">
   <div class="wrap">
     <div class="sec-h reveal"><div><div class="kicker">Latest news & blogs</div><h2>Stories, insights and updates</h2></div><a href="#news" class="more">Read all <span>→</span></a></div>
-    <div class="grid g3">
-      ${NEWS.slice(0,3).map((n,i)=>`<article class="card nw reveal d${i}"><div class="ov"><div class="bg" style="background-image:url('${U(n.img,900)}')"></div></div><span class="tag ${i===1?'g':''}" style="align-self:flex-start">${esc(n.cat)}</span><h3 style="margin-top:12px">${esc(n.t)}</h3><div class="meta">${dt(n.date).short} · ${esc(n.author)}</div><p>${esc(n.ex)}</p><a class="more" href="#blog/${n.id}" style="margin-top:auto">Read more <span>→</span></a></article>`).join("")}
-    </div>
+    <div class="grid g3" id="homeNews"></div>
   </div>
 </section>
 
@@ -336,99 +332,41 @@ ${phero("Post a Job","Share an opportunity with fellow alumni","Login required. 
 </section>`;
 
 V.events=()=>`
-${phero("Events","Connect, celebrate & reconnect","Reunions, networking, workshops, conferences and webinars.","","photo-1523050854058-8df90110c9f1",[[EVENTS.filter(e=>!dt(e.d).past).length,"Upcoming"],[S.rsvpN,"Your RSVPs"]])}
+${phero("Events","Connect, celebrate & reconnect","Reunions, networking, workshops, conferences and webinars.","","photo-1523050854058-8df90110c9f1",[])}
 <section class="sec">
   <div class="wrap">
-    ${(()=>{const e=EVENTS[0];const f=dt(e.d);return `<article class="card reveal" style="padding:0;overflow:hidden;flex-direction:row;flex-wrap:wrap;margin-bottom:56px">
-      <div class="ov" style="flex:1 1 480px;min-height:340px;border-radius:0"><div class="bg" style="background-image:url('${U(e.img,1400)}')"></div><div style="position:absolute;top:22px;left:22px;z-index:3"><span class="tag">Featured</span></div></div>
-      <div style="flex:1 1 380px;padding:44px;display:flex;flex-direction:column;justify-content:center"><span class="tag n" style="align-self:flex-start">${esc(e.cat)}</span><h2 style="margin:16px 0 12px;font-size:2.1rem">${esc(e.t)}</h2><p>${esc(e.desc)}</p><div style="display:grid;gap:8px;margin:20px 0;color:var(--muted);font-size:.93rem"><span>📅 ${f.full} · ${esc(e.time)}</span><span>📍 ${esc(e.venue)}</span></div><a href="#event/${e.id}" class="btn btn-em" style="align-self:flex-start">View & register <span>→</span></a></div>
-    </article>`})()}
+    <div id="evFeat"></div>
     <div class="bar2"><div class="chips" id="evc">${["upcoming","past","all"].map((x,i)=>`<button class="chip ${i===0?'on':''}" data-f="${x}">${x[0].toUpperCase()+x.slice(1)}</button>`).join("")}</div>
-      <div class="chips" id="evcat">${["All","Alumni reunions","Networking","Workshops","Conferences","Webinars","University events"].map((x,i)=>`<button class="chip ${i===0?'on':''}" data-cat="${x}">${x}</button>`).join("")}</div></div>
-    <div class="grid g3" id="evList"></div>
-    <div class="empty" id="evEmpty"><h3>No events in this view</h3></div>
-    <div class="sec-h" style="margin-top:80px"><div><div class="kicker">Highlights</div><h2>Moments from past events</h2></div></div>
-    <div class="gal">${GAL.slice(0,4).map((g,i)=>`<div class="reveal d${i}" data-lb="${g}" style="height:${i===0?'420px':'200px'}"><div class="bg" style="background-image:url('${U(g,900)}')"></div></div>`).join("")}</div>
+      <div class="chips" id="evcat"></div></div>
+    <div class="grid g3" id="evList"><p>Loading…</p></div>
+    <div class="empty" id="evEmpty"><h3>No events in this view</h3><p>Check back soon, or look at past events.</p></div>
   </div>
 </section>`;
 
-V.event=(id)=>{
-  const e=EVENTS.find(x=>x.id===id); if(!e) return notFound("Event not found","This event may have been removed.");
-  const f=dt(e.d), left=e.seats-e.taken, pct=Math.round(e.taken/e.seats*100), full=left<=0, going=!!S.rsvp[e.id], past=f.past;
-  const related=EVENTS.filter(x=>x.id!==e.id&&x.cat===e.cat).slice(0,3);
-  const label=past?"Event ended":going?"You're registered ✓":full?"Sold out":"Register now";
-  return `
-  <section class="phero" style="min-height:360px"><div class="bg" style="background-image:url('${U(e.img,2000)}')"></div>
-    <div class="wrap"><div class="phero-copy"><div class="crumb"><a href="#events">Events</a><span>/</span>Event details</div><span class="tag">${esc(e.cat)}</span><h1 style="margin-top:14px">${esc(e.t)}</h1><p>${esc(e.venue)}</p></div>
-    <div class="mini-stats"><div><b>${f.day}</b><small>${f.mon}</small></div><div><b>${esc(e.fee)}</b><small>Fee</small></div></div></div>
-  </section>
-  <section class="sec">
-    <div class="wrap jd">
-      <div class="reveal">
-        <div class="card" style="padding:32px"><div class="kicker">About the event</div><p>${esc(e.desc)}</p></div>
-        <div class="card" style="padding:32px;margin-top:22px"><div class="kicker">Agenda</div><div class="agenda">${e.agenda.map(a=>`<div class="ag"><b>${esc(a[0])}</b><span>${esc(a[1])}</span></div>`).join("")}</div></div>
-        ${e.speakers.length?`<div class="card" style="padding:32px;margin-top:22px"><div class="kicker">Speakers & guests</div><div class="spk">${e.speakers.map((s,si)=>`<div><div class="av" style="background-image:url('${P(PH[(si*3+2)%PH.length])}')"></div><b>${esc(s.n)}</b><small>${esc(s.r)}</small></div>`).join("")}</div></div>`:""}
-        <div class="card" style="padding:32px;margin-top:22px"><div class="kicker">Organising committee</div><p>${esc(e.org)}</p></div>
-      </div>
-      <aside class="side reveal d1">
-        <div class="card" style="padding:28px">
-          <div class="row" style="border:0;padding:0 0 16px"><div class="ic">${svg(ICO.cal,20)}</div><div><small>Date & time</small><b>${f.full}<br>${esc(e.time)}</b></div></div>
-          <div class="row" style="border:0;padding:0 0 16px"><div class="ic">${svg(ICO.pin,20)}</div><div><small>${e.online?'Online':'Venue'}</small><b>${esc(e.venue)}</b></div></div>
-          <small style="color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.07em">Seats</small>
-          <div class="seats"><i data-w="${pct}"></i></div>
-          <div style="font-size:.88rem;color:var(--muted)">${left>0?left+' of '+e.seats+' seats left':'Fully booked'}</div>
-          <div class="pri"><button class="btn ${going?'done':'btn-em'}" id="regBtn" data-id="${e.id}" ${past||full&&!going?'disabled':''}>${label}</button>${going?`<button class="btn btn-line btn-sm" id="cancelBtn" data-id="${e.id}">Cancel registration</button>`:''}</div>
-        </div>
-      </aside>
-    </div>
-    ${related.length?`<div class="wrap" style="margin-top:70px"><div class="sec-h"><div><div class="kicker">Related</div><h2>More events</h2></div></div><div class="grid g3">${related.map(r=>{const rf=dt(r.d);return `<article class="card ev"><div class="dt"><b>${rf.day}</b><small>${rf.mon}</small></div><div class="ov sm"><div class="bg" style="background-image:url('${U(r.img,700)}')"></div></div><span class="tag n" style="align-self:flex-start">${esc(r.cat)}</span><h3 style="margin-top:12px">${esc(r.t)}</h3><a class="more" style="margin-top:14px" href="#event/${r.id}">View <span>→</span></a></article>`}).join("")}</div></div>`:""}
-  </section>`;
-};
+V.event=()=>`<div id="evBox"><section class="sec"><div class="wrap" style="padding:60px 0"><p>Loading…</p></div></section></div>`;
 
 V.news=()=>`
-${phero("News & Blogs","Stories, insights & updates","Alumni experiences, research, career advice and institute news.","","photo-1497366216548-37526070297c",[[NEWS.length,"Articles"],[6,"Categories"]])}
+${phero("News & Blogs","Stories, insights & updates","Alumni experiences, research, career advice and institute news.","","photo-1497366216548-37526070297c",[])}
 <section class="sec">
   <div class="wrap">
     <div class="bar" style="grid-template-columns:1fr">
       <input class="field" id="nq" placeholder="Search articles" aria-label="Search articles">
     </div>
-    <div class="bar2"><div class="chips" id="nc">${["All","Alumni Stories","University News","Career Insights","Research & Innovation","Industry Updates","Alumni Activities"].map((x,i)=>`<button class="chip ${i===0?'on':''}" data-cat="${x}">${x}</button>`).join("")}</div><span class="count" id="nct"></span></div>
-    <article class="card reveal" id="nFeat" style="padding:0;overflow:hidden;flex-direction:row;flex-wrap:wrap;margin-bottom:44px"></article>
-    <div class="grid g3" id="nGrid"></div>
-    <div class="empty" id="nEmpty"><h3>No articles match</h3></div>
+    <div class="bar2"><div class="chips" id="nc"></div><span class="count" id="nct"></span></div>
+    <article class="card reveal" id="nFeat" style="padding:0;overflow:hidden;flex-direction:row;flex-wrap:wrap;margin-bottom:44px;display:none"></article>
+    <div class="grid g3" id="nGrid"><p>Loading…</p></div>
+    <div class="empty" id="nEmpty"><h3>No articles yet</h3><p>Stories and news from the network will appear here.</p></div>
     <div class="cta reveal" style="margin-top:80px;grid-template-columns:1fr auto">
-      <div><h2>Get the newsletter</h2><p>One email every fortnight with stories and opportunities from the network.</p></div>
-      <form class="sub-box" id="subForm" style="max-width:440px;position:relative;background:#fff"><input type="email" placeholder="your@email.com" aria-label="Email" required><button class="btn btn-em btn-sm" type="submit">Subscribe</button></form>
+      <div><h2>Have a story to share?</h2><p>Verified alumni can write blogs about their work and journey. The alumni cell reviews each article before it goes live.</p></div>
+      <a class="btn btn-em" href="#write">Write an article <span>→</span></a>
     </div>
   </div>
 </section>`;
 
-V.blog=(id)=>{
-  const n=NEWS.find(x=>x.id===id); if(!n) return notFound("Article not found","This article may have moved.");
-  const words=n.body.join(" ").split(" ").length+60, mins=Math.max(2,Math.round(words/200));
-  const rel=NEWS.filter(x=>x.id!==n.id).slice(0,3);
-  return `
-  <section class="phero" style="min-height:420px"><div class="bg" style="background-image:url('${U(n.img,2000)}')"></div>
-    <div class="wrap"><div class="phero-copy"><div class="crumb"><a href="#news">News & Blogs</a><span>/</span>Article</div><span class="tag">${esc(n.cat)}</span><h1 style="margin-top:14px;max-width:22ch">${esc(n.t)}</h1><p>By ${esc(n.author)} · ${dt(n.date).full} · ${mins} min read</p></div></div>
-  </section>
-  <section class="sec">
-    <div class="wrap">
-      <article class="art reveal">
-        <p class="lead">${esc(n.ex)}</p>
-        ${n.body.map((p,i)=>`<p>${esc(p)}</p>${i===0?`<figure><img src="${U(n.img,1400)}" alt=""><figcaption>Photo: ${esc(n.t)}</figcaption></figure>`:""}`).join("")}
-        <div class="share">
-          <span style="font-weight:700;color:var(--navy);font-size:.9rem">Share</span>
-          <button class="chip" id="shareCopy">Copy link</button>
-          <button class="chip" data-share="whatsapp">WhatsApp</button>
-          <button class="chip" data-share="linkedin">LinkedIn</button>
-        </div>
-      </article>
-    </div>
-    <div class="wrap" style="margin-top:80px"><div class="sec-h"><div><div class="kicker">Related</div><h2>Keep reading</h2></div></div>
-      <div class="grid g3">${rel.map(r=>`<article class="card nw"><div class="ov"><div class="bg" style="background-image:url('${U(r.img,900)}')"></div></div><span class="tag n" style="align-self:flex-start;margin-top:16px">${esc(r.cat)}</span><h3 style="margin-top:12px">${esc(r.t)}</h3><a class="more" style="margin-top:14px" href="#blog/${r.id}">Read <span>→</span></a></article>`).join("")}</div>
-    </div>
-  </section>`;
-};
+V.blog=()=>`<div id="blogBox"><section class="sec"><div class="wrap" style="padding:60px 0"><p>Loading…</p></div></section></div>`;
+
+V.write=()=>`
+<section class="sec" style="padding-top:70px"><div class="wrap" style="max-width:900px"><div id="wrBox"><p>Loading…</p></div></div></section>`;
 
 V.login=()=>`
 <section class="sec" style="padding-top:70px">

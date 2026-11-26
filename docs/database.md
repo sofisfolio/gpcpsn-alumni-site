@@ -43,3 +43,9 @@ Built-in roles: **Superadmin** (implicitly everything, cannot be edited, last on
 Only a Superadmin can grant or remove the Superadmin role. A role that someone still holds cannot be deleted. Granting and removing roles is written to the activity log.
 The role tables have RLS on and no direct access at all: everything goes through checked functions (`my_access`, `admin_dashboard`, `admin_recent_activity`, `admin_list_staff`, `admin_assign_role`, `admin_remove_role`, `admin_roles`, `admin_save_role`, `admin_delete_role`).
 The website hides sections a person cannot use, but that is only convenience: the database re-checks every action.
+
+## Events and articles (migration 9 and the screens built on migrations 1-8)
+- Events live in `events` (status draft / published / cancelled). The public reads `events_public` (never the private online link). Registration goes only through `register_for_event` / `cancel_event_registration` (seat limits are checked under a row lock, so no overbooking); registered people get the online link through `get_event_online_url`.
+- **Migration 9** adds `admin_event_registrations(event_id)` for people with `events.manage`: names, batch, email, seats, notes of that one event's registrants.
+- News and blogs are one table, `articles`; the category (Alumni Stories, Institute News, ...) tells them apart. Members' articles are saved as draft or submitted as pending; people with `articles.publish` publish directly; people with `articles.review` approve, reject (with reason), unpublish and feature. The public reads `articles_public`.
+- Event times are entered and shown in India time and stored in UTC. Images: event banners `event-banners/events/<file>.jpg` (events.manage only); article covers `article-images/<member id>/<file>.jpg`.

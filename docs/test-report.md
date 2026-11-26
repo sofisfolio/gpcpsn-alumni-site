@@ -119,3 +119,10 @@ Authentication, email delivery, RLS/permissions, storage, moderation, admin, rea
 - `tests/smoke.cjs` 80/80, `auth.e2e` 33/33, `members.e2e` 32/32, `jobs.e2e` 43/43 (mocks updated for the new role functions).
 - Migration 8 applied to the live project and checked by SQL (12 permissions, 3 roles, old admin table gone, no staff yet) and by the security advisor.
 - **Not yet verified on the real service:** signing in as a Superadmin and using the panel (needs the owner's account).
+
+## Events, news and blogs
+- `tests/db/run.sh`: 198/198 (adds registrant-list permissions).
+- `tests/content.e2e.cjs`: 62/62 pass, 3 consecutive runs (mock Supabase): events list/filters/featured/full/cancelled, hostile text escaped, event page and registration (full event, online link only after registering, cancel, unverified and signed-out visitors, past/cancelled), news list/search/categories, article page, home sections shown only with content, member Write page (gates, review submission fields, own-folder cover upload, delete draft, staff publish), staff Events (list, publish, registrations, cancel, validation, India-time conversion, banner upload, delete draft) and staff Articles (review queue, reject reason, publish, feature, contributor limits).
+- `tests/smoke.cjs` 88/88 (events/news pages now checked for absence of invented content), `auth.e2e` 33/33, `members.e2e` 32/32, `jobs.e2e` 43/43, `staff.e2e` 35/35.
+- Migration 9 applied to the live project.
+- **Not yet verified on the real service:** creating an event or article and registering as the real owner account (the next step for the owner).

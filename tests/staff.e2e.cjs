@@ -74,7 +74,7 @@ const nav = (page) => page.$$eval(".adm-nav a span", (e) => e.map((x) => x.textC
     const { ctx, page, errs } = await open(browser, b, id(2));
     await page.goto(U + "#admin"); await page.waitForSelector(".adm-stat");
     const n = await nav(page);
-    rec("faculty sees Dashboard, Alumni, Jobs, Reports, Messages", n.join() === "Dashboard,Alumni,Jobs,Reports,Messages", n.join());
+    rec("faculty sees Dashboard, Alumni, Jobs, Events, News & blogs, Reports, Messages", n.join() === "Dashboard,Alumni,Jobs,Events,News & blogs,Reports,Messages", n.join());
     rec("faculty does not see Staff & roles or Activity log", !n.includes("Staff & roles") && !n.includes("Activity log"));
     rec("Staff panel link shows for staff", await page.$eval("#adminLink", (e) => getComputedStyle(e).display !== "none"));
     const t = await page.textContent("#adMain");
@@ -97,7 +97,7 @@ const nav = (page) => page.$$eval(".adm-nav a span", (e) => e.map((x) => x.textC
   { const b = makeBackend({ access: { superadmin: true, roles: ["Superadmin"], permissions: ALL } });
     const { ctx, page, errs } = await open(browser, b, id(1));
     await page.goto(U + "#admin/staff"); await page.waitForSelector("#asForm");
-    rec("superadmin sees every section", (await nav(page)).join() === "Dashboard,Alumni,Jobs,Reports,Messages,Staff & roles,Activity log");
+    rec("superadmin sees every section", (await nav(page)).join() === "Dashboard,Alumni,Jobs,Events,News & blogs,Reports,Messages,Staff & roles,Activity log");
     rec("staff list shows names and roles, escaped", (await page.textContent("#adMain")).includes("fac@example.test") && (await page.$("#adMain b")) === null);
     await page.fill("#asEmail", "new@example.test"); await page.selectOption("#asRole", "faculty"); await page.click("#asForm button[type=submit]"); await page.waitForTimeout(300);
     rec("giving a role calls the database function with email and role", b.st.rpc.some((r) => r.fn === "admin_assign_role" && r.body.p_email === "new@example.test" && r.body.p_role === "faculty"));

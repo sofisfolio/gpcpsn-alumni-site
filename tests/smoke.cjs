@@ -24,7 +24,7 @@ function serve(dir, port) {
 
 const ROUTES = ["#home", "#about", "#about/faculty", "#alumni", "#profile/rahul-shinde", "#profile/meena-pawar",
   "#jobs", "#job/site-eng", "#post-job", "#events", "#event/annual-meet-2026", "#event/batch-2014",
-  "#news", "#blog/survey-future", "#login", "#login/join", "#nonexistent", "#alumni", "#profile/rahul-shinde", "#profile/meena-pawar", "#jobs", "#job/site-eng", "#post-job"];
+  "#news", "#blog/survey-future", "#events", "#event/annual-meet-2026", "#event/batch-2014", "#news", "#login", "#login/join", "#nonexistent", "#alumni", "#profile/rahul-shinde", "#profile/meena-pawar", "#jobs", "#job/site-eng", "#post-job"];
 const WIDTHS = [390, 768, 1024, 1440];
 
 (async () => {
@@ -56,8 +56,8 @@ const WIDTHS = [390, 768, 1024, 1440];
     const get = (p) => p.evaluate(() => { const a = document.querySelector("#app").cloneNode(true); a.querySelectorAll("#feed,[data-c]").forEach((e) => e.remove()); return a.innerText || a.textContent; });
     const [ta, tb] = [norm(await get(A.page)), norm(await get(B.page))];
     // Phase 3 deliberately removed invented content, so these routes must differ from the prototype, and must not contain it.
-    const CHANGED = ["#home", "#about", "#about/faculty", "#blog/survey-future", "#login", "#login/join", "#nonexistent", "#alumni", "#profile/rahul-shinde", "#profile/meena-pawar", "#jobs", "#job/site-eng", "#post-job"];
-    const FAKE = ["1,200", "Live activity", "Sameer K.", "Nisha P.", "Reset link sent (demo)", "Batch 2008", "Meena Pawar", "Pooja Kulkarni", "Shinde Infra", "Kulkarni Structural Studio", "Jadhav Survey Works", "Gaikwad Materials Lab", "Gulf Build Consultants", "Urban Design Co."];
+    const CHANGED = ["#home", "#about", "#about/faculty", "#blog/survey-future", "#events", "#event/annual-meet-2026", "#event/batch-2014", "#news", "#login", "#login/join", "#nonexistent", "#alumni", "#profile/rahul-shinde", "#profile/meena-pawar", "#jobs", "#job/site-eng", "#post-job"];
+    const FAKE = ["1,200", "Live activity", "Sameer K.", "Nisha P.", "Reset link sent (demo)", "Batch 2008", "Meena Pawar", "Pooja Kulkarni", "Shinde Infra", "Kulkarni Structural Studio", "Jadhav Survey Works", "Gaikwad Materials Lab", "Gulf Build Consultants", "Urban Design Co.", "Annual Alumni Meet 2026", "Site Visit: Metro Viaduct", "Sustainable Concrete Practices", "Careers Webinar", "How drones are changing site surveys", "Low-carbon concrete", "Batch of 2014 plans a scholarship", "Call for mentors"];
     const DIRECTORY_FAKE = ["Rahul Shinde", "Kiran Jadhav"];   // the sample stories/news (Phases 4-7) still use these two names
     if (CHANGED.includes(route)) {
       const bad = FAKE.concat(route.startsWith("#alumni") || route.startsWith("#profile") ? DIRECTORY_FAKE : []).filter((x) => ta.includes(x));
