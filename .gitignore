@@ -1,0 +1,14 @@
+# secrets and local config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+supabase/.temp/
+supabase/.branches/
+# tooling
+node_modules/
+.DS_Store
+*.log
+# test artefacts
+tests/screenshots/
