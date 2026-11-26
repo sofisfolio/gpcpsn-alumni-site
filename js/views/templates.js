@@ -1,5 +1,5 @@
 /* View templates (HTML strings). Data now comes from ../data/dev-sample.js; swapped for services later. */
-import {$,esc,ini,U,P,dt,CAMPUS} from '../lib/util.js';
+import {$,esc,ini,U,P,dt,CAMPUS,batchYears} from '../lib/util.js';
 import {S} from '../state.js';
 import {ALUMNI,COUNTRIES,INDUSTRIES,DEPTS,JOBS,EVENTS,NEWS,GAL,STORIES,TESTI,FACULTY,fini,VISION,MISSION,PEO,PO,PSO,facCards,PH} from '../data/dev-sample.js';
 /* ============ view templates ============ */
@@ -458,7 +458,7 @@ V.login=()=>`
             <div class="g-form">
               <div class="full"><label for="j_name">Full name *</label><input class="field" id="j_name" name="name"><div class="err"></div></div>
               <div class="full"><label for="j_email">Email *</label><input class="field" id="j_email" name="email" type="email"><div class="err"></div></div>
-              <div><label for="j_y">Graduation year *</label><select class="field" id="j_y" name="y">${Array.from({length:30},(_,i)=>2026-i).map(y=>`<option value="${y}">${y}</option>`).join("")}</select></div>
+              <div><label for="j_y">Graduation year *</label><select class="field" id="j_y" name="y">${batchYears().map(y=>`<option value="${y}">${y}</option>`).join("")}</select></div>
               <div><label for="j_d">Department</label><select class="field" id="j_d" name="d"><option value="civil-engineering">Civil Engineering</option></select></div>
               <div class="full"><label for="j_en">Enrolment / seat number <small style="color:var(--muted)">(optional, helps us verify you faster)</small></label><input class="field" id="j_en" name="en" maxlength="40" autocomplete="off"><div class="err"></div></div>
               <div><label for="pwIn">Password *</label><input class="field" name="pw" type="password" id="pwIn"><div class="strength"><i id="pwBar"></i></div><div class="err"></div></div>

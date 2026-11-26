@@ -14,3 +14,7 @@ export const ini=n=>String(n||"?").trim().split(" ").map(x=>x[0]).slice(0,2).joi
 export const TODAY=new Date(new Date().toDateString());
 export const dt=s=>{const d=new Date(s+"T00:00:00");return{day:d.getDate(),mon:d.toLocaleString("en-IN",{month:"short"}),full:d.toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"}),short:d.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}),past:d<TODAY}};
 export const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* Batch years offered everywhere: the current year down to 1955 (computed, so it never goes out of date). */
+export const FIRST_BATCH=1955;
+export const batchYears=()=>{const y=new Date().getFullYear();return Array.from({length:Math.max(1,y-FIRST_BATCH+1)},(_,i)=>y-i)};
