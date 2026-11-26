@@ -6,6 +6,7 @@ import {auth,db} from '../lib/supa.js';
 import {friendly,loadMe} from '../services/auth.js';
 import {listAlumni,getAlumnus,isId} from '../services/directory.js';
 import {storage} from '../lib/supa.js';
+import {listJobs,getJob,submitJob,myJobs,withdrawJob,deleteJob,reportJob,TYPE,MODE,lines} from '../services/jobs.js';
 import {ALUMNI,JOBS,EVENTS,NEWS} from '../data/dev-sample.js';
 export function wire(p,arg){
   motion(app);bars(app);
@@ -31,7 +32,19 @@ function homeWire(){
   const car=$("#car");
   $("#carL").onclick=()=>car.scrollBy({left:-320,behavior:"smooth"});
   $("#carR").onclick=()=>car.scrollBy({left:320,behavior:"smooth"});
-  loadStats();loadTestimonials();loadFeatured();
+  loadStats();loadTestimonials();loadFeatured();loadHomeJobs();
+}
+const jobCard=(j,k=0)=>`<article class="card jobrow reveal d${k%2}">
+      <div class="logo-b pic" role="img" aria-label="${esc(j.company)}">${esc(ini(j.company))}</div>
+      <div><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="tag ${j.employment_type==='internship'?'':'n'}">${esc(TYPE[j.employment_type]||j.employment_type)}</span>${j.featured?'<span class="tag g">Featured</span>':''}</div><h3 style="margin-top:10px"><a href="#job/${esc(j.id)}">${esc(j.title)}</a></h3>
+        <div class="sub"><span>${esc(j.company)}</span><span>📍 ${esc(j.location)}</span>${j.published_at?`<span>🗓 ${esc(new Date(j.published_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}))}</span>`:""}</div></div>
+      <a class="btn btn-em btn-sm" href="#job/${esc(j.id)}">View &amp; apply</a></article>`;
+async function loadHomeJobs(){
+  try{
+    const rows=(await listJobs()).slice(0,4);
+    const sec=$("#homeJobsSec"),box=$("#homeJobs");if(!sec||!box||!rows.length)return;
+    box.innerHTML=rows.map(jobCard).join("");sec.style.display="";motion(box);
+  }catch{/* section stays hidden */}
 }
 async function loadFeatured(){
   try{
@@ -155,20 +168,22 @@ async function profileWire(id){
   motion(box);
 }
 
-/* jobs */
-function jobsWire(){
-  let jf="all";
+/* jobs (real) */
+async function jobsWire(){
+  let jf="all",ALL=[];
+  $("#jct").textContent="Loading…";
+  try{ALL=await listJobs()}catch(e){$("#jct").textContent="";$("#jEmpty").classList.add("on");$("#jEmptyMsg").textContent=friendly(e);return}
+  if(!$("#jList"))return;
+  [...new Set(ALL.map(j=>j.industry).filter(Boolean))].sort().forEach(v=>$("#ji").insertAdjacentHTML("beforeend",`<option value="${esc(v)}">${esc(v)}</option>`));
+  const expOk=(j,e)=>{if(!e)return true;const m=j.experience_min_years;return e==="fresher"?(m==null||m===0):e==="1-3"?(m!=null&&m>=1&&m<=3):(m!=null&&m>=3)};
   const f=()=>{
     const q=$("#jq").value.trim().toLowerCase(),ind=$("#ji").value,ty=$("#jt").value,ex=$("#je").value,dd=$("#jd").value;
-    const list=JOBS.filter(j=>(!ind||j.ind===ind)&&(!ty||j.type===ty)&&(!ex||j.exp.toLowerCase().includes(ex.toLowerCase().split(" ")[0]))&&(!q||[j.t,j.co,j.loc].join(" ").toLowerCase().includes(q))&&(!dd||(TODAY-new Date(j.posted+"T00:00:00"))/864e5<=+dd)&&(jf==="all"||j.type===jf||(jf==="feat"&&j.feat)));
-    $("#jList").innerHTML=list.map((j,k)=>`<article class="card jobrow reveal d${k%2}">
-      <div class="logo-b pic" style="background-image:url('${U(j.img,300)}')" role="img" aria-label="${esc(j.co)}">${esc(ini(j.co))}</div>
-      <div><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="tag ${j.type==='Internship'?'':'n'}">${esc(j.type)}</span>${j.feat?'<span class="tag g">Featured</span>':''}</div><h3 style="margin-top:10px"><a href="#job/${j.id}">${esc(j.t)}</a></h3>
-        <div class="sub"><span>${esc(j.co)}</span><span>📍 ${esc(j.loc)}</span><span>🗓 ${dt(j.posted).short}</span></div></div>
-      <a class="btn btn-em btn-sm" href="#job/${j.id}">Apply now</a></article>`).join("");
-    $("#jct").textContent=`${list.length} openings`;
+    const list=ALL.filter(j=>(!ind||j.industry===ind)&&(!ty||j.employment_type===ty)&&expOk(j,ex)&&(!q||[j.title,j.company,j.location].join(" ").toLowerCase().includes(q))&&(!dd||(Date.now()-new Date(j.published_at||j.created_at))/864e5<=+dd)&&(jf==="all"||j.employment_type===jf||(jf==="feat"&&j.featured)));
+    $("#jList").innerHTML=list.map(jobCard).join("");
+    $("#jct").textContent=`${list.length} ${list.length===1?"opening":"openings"}`;
     $("#jEmpty").classList.toggle("on",!list.length);
-    $("#jchips").innerHTML=[["all","All roles"],["feat","Featured"],["Full-time","Full-time"],["Internship","Internship"],["Contract","Contract"]].map(x=>`<button class="chip ${jf===x[0]?'on':''}" data-jf="${x[0]}">${x[1]}</button>`).join("");
+    $("#jEmptyMsg").textContent=ALL.length?"Adjust filters to see more roles.":"No openings have been approved yet. Alumni who are hiring can post one.";
+    $("#jchips").innerHTML=[["all","All roles"],["feat","Featured"],["full_time","Full-time"],["internship","Internship"],["contract","Contract"]].map(x=>`<button class="chip ${jf===x[0]?'on':''}" data-jf="${x[0]}">${x[1]}</button>`).join("");
     motion($("#jList"));
   };
   ["jq","ji","jt","je","jd"].forEach(id=>$("#"+id).addEventListener("input",f));
@@ -176,27 +191,95 @@ function jobsWire(){
   f();
 }
 
-function jobWire(id){
-  const j=JOBS.find(x=>x.id===id);if(!j)return;
-  const b=$("#applyBtn");
-  if(b)b.onclick=()=>gate("Apply with your alumni profile.",()=>{
-    S.apply[j.id]=true;b.textContent="Application sent ✓";b.disabled=true;b.classList.add("done");b.classList.remove("btn-em");
-    const t=$$("#track div");if(t[1])t[1].classList.add("on");toast("Application sent");
-  });
+async function jobWire(id){
+  const box=$("#jobBox");if(!box)return;
+  const missing=(t,m)=>{box.innerHTML=`<section class="sec"><div class="wrap" style="padding:90px 0;text-align:center"><h2>${esc(t)}</h2><p style="margin:10px 0 22px">${esc(m)}</p><a class="btn btn-em" href="#jobs">Back to jobs</a></div></section>`};
+  let j=null;
+  try{j=await getJob(id)}catch(e){return missing("Could not load this job",friendly(e))}
+  if(!$("#jobBox"))return;
+  if(!j)return missing("Job not found","This listing may have expired or been removed.");
+  document.title=j.title+" | GPCPSN";
+  const fmt=d=>new Date(d).toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"});
+  const li=t=>{const a=lines(t);return a.length?`<ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""};
+  const exp=j.experience_min_years==null&&j.experience_max_years==null?"Not specified":j.experience_max_years!=null&&j.experience_min_years!=null?`${j.experience_min_years}–${j.experience_max_years} years`:j.experience_min_years!=null?`${j.experience_min_years}+ years`:`Up to ${j.experience_max_years} years`;
+  const apply=[];
+  if(j.apply_url)apply.push(`<a class="btn btn-em" href="${esc(j.apply_url)}" target="_blank" rel="noopener noreferrer">Apply on employer site</a>`);
+  if(j.apply_email)apply.push(`<a class="btn ${j.apply_url?"btn-line":"btn-em"}" href="mailto:${esc(j.apply_email)}?subject=${encodeURIComponent("Application: "+j.title)}">Apply by email</a>`);
+  if(!j.apply_url&&!j.apply_email)apply.push(`<a class="btn btn-em" href="#login">Sign in to see how to apply</a>`);
+  box.innerHTML=`
+  <section class="phero" style="min-height:320px"><div class="bg" style="background-image:url('${U("photo-1521737604893-d14cc237f11d",2000)}')"></div>
+    <div class="wrap"><div class="phero-copy"><div class="crumb"><a href="#jobs">Job portal</a><span>/</span>Job details</div><span class="tag">${esc(TYPE[j.employment_type]||"")}</span><h1 style="margin-top:14px">${esc(j.title)}</h1><p>${esc(j.company)} · ${esc(j.location)} · ${esc(MODE[j.work_mode]||"")}</p></div></div>
+  </section>
+  <section class="sec"><div class="wrap jd">
+    <div class="reveal">
+      <div class="facts">
+        <div class="fact"><small>Salary</small><b>${esc(j.salary_text||"Not disclosed")}</b></div>
+        <div class="fact"><small>Employment</small><b>${esc(TYPE[j.employment_type]||"")}</b></div>
+        <div class="fact"><small>Experience</small><b>${esc(exp)}</b></div>
+        <div class="fact"><small>Posted</small><b>${j.published_at?esc(fmt(j.published_at)):"Recently"}</b></div>
+      </div>
+      <div class="card" style="padding:32px"><div class="kicker">Description</div><p style="white-space:pre-line">${esc(j.description)}</p>
+        ${j.responsibilities?`<h3>Responsibilities</h3>${li(j.responsibilities)}`:""}
+        ${j.qualifications?`<h3>Qualifications</h3>${li(j.qualifications)}`:""}
+        ${(j.skills||[]).length?`<h3>Skills</h3><div class="pill-list">${j.skills.map(x=>`<span>${esc(x)}</span>`).join("")}</div>`:""}
+      </div>
+      <div class="card" style="padding:30px;margin-top:22px;flex-direction:row;gap:18px;align-items:center"><div class="logo-b pic" style="width:70px;height:70px">${esc(ini(j.company))}</div><div><small style="color:var(--muted);font-weight:700">About the employer</small><h3>${esc(j.company)}</h3><p style="font-size:.92rem">Shared by a verified alumnus of the network.${j.company_website?` <a class="more" href="${esc(j.company_website)}" target="_blank" rel="noopener noreferrer">Company website</a>`:""}</p></div></div>
+    </div>
+    <aside class="side reveal d1"><div class="card" style="padding:28px">
+      <div class="kicker">How to apply</div>
+      ${j.deadline?`<div style="margin-bottom:14px;color:var(--muted);font-size:.9rem">Last date: <b style="color:var(--navy)">${esc(fmt(j.deadline))}</b></div>`:""}
+      <div class="pri" style="margin-top:12px">${apply.join("")}<a class="btn btn-line" href="#jobs">Back to jobs</a></div>
+      <p style="font-size:.82rem;color:var(--muted);margin-top:16px">You apply directly with the employer. Never pay money to apply. <button type="button" class="more" id="reportJob" style="display:inline;font-size:.82rem">Report this listing</button></p>
+    </div></aside>
+  </div></section>`;
+  motion(box);
+  $("#reportJob").onclick=()=>{
+    if(!S.auth){gate("Reporting a listing requires a signed-in account.",()=>{});return}
+    if(!S.profile||S.profile.verification_status!=="verified"){openModal(`<h2 style="font-size:1.35rem">Only verified members can report</h2><p style="margin-top:10px">Once the alumni cell has verified you, you can report listings that look wrong.</p>`);return}
+    openModal(`<h2 style="font-size:1.35rem">Report this listing</h2><form id="rpForm" style="margin-top:14px"><label for="rpWhy">What is wrong with it? *</label><textarea class="field" id="rpWhy" rows="3" maxlength="500"></textarea><div class="err" id="rpErr"></div><div style="display:flex;gap:10px;margin-top:16px"><button class="btn btn-em" type="submit">Send report</button><button class="btn btn-line" type="button" id="rpCancel">Cancel</button></div></form>`);
+    $("#rpCancel").onclick=closeModal;
+    $("#rpForm").onsubmit=async ev=>{
+      ev.preventDefault();const why=$("#rpWhy").value.trim();
+      if(why.length<3){$("#rpErr").textContent="Please say what is wrong.";return}
+      try{await reportJob(auth.getSession().user.id,j.id,why);closeModal();toast("Thank you. The alumni cell will review this listing.")}
+      catch(err){$("#rpErr").textContent=err&&(err.code==="23505"||/duplicate/i.test(err.message))?"You have already reported this listing.":friendly(err)}
+    };
+  };
 }
 
 function postWire(){
   const f=$("#pj");
-  const showGate=()=>{$("#pjForm").innerHTML=`<div style="text-align:center;padding:30px 10px"><div class="ic dark" style="margin:0 auto 18px;width:68px;height:68px;border-radius:50%">${LOCK_ICON}</div><h2 style="font-size:1.5rem">Sign in to post a job</h2><p style="margin:10px 0 22px">Only signed-in alumni can submit openings for review.</p><a class="btn btn-em" href="#login">Sign in</a></div>`};
-  if(!S.auth){showGate();return}
-  if(!f) return;
-  f.onsubmit=e=>{
-    e.preventDefault();
-    const req=[["t",f.t.value.trim().length>2],["co",f.co.value.trim().length>1],["loc",f.loc.value.trim().length>1],["desc",f.desc.value.trim().length>=20],["link",f.link.value.trim().length>3]];
-    let ok=true;
-    req.forEach(([n,v])=>{const el=f[n];el.classList.toggle("bad",!v);el.parentElement.querySelector(".err").textContent=v?"":"Required";if(!v)ok=false});
+  const gateBox=(inner)=>{$("#pjForm").innerHTML=`<div style="text-align:center;padding:30px 10px"><div class="ic dark" style="margin:0 auto 18px;width:68px;height:68px;border-radius:50%">${LOCK_ICON}</div>${inner}</div>`};
+  if(!S.auth){gateBox(`<h2 style="font-size:1.5rem">Sign in to post a job</h2><p style="margin:10px 0 22px">Only verified alumni can submit openings for the network.</p><div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><a href="#login" class="btn btn-em">Sign in</a><a href="#login/join" class="btn btn-line">Create account</a></div>`);return}
+  if(!S.profile||S.profile.verification_status!=="verified"){gateBox(`<h2 style="font-size:1.5rem">Your account is not verified yet</h2><p style="margin:10px 0 22px">Jobs can be posted once the alumni cell has verified you. ${S.profile&&S.profile.verification_status==="rejected"?"Please correct your details on your profile page.":"Meanwhile, complete your profile."}</p><a href="#me" class="btn btn-em">Go to my profile</a>`);return}
+  if(!f)return;
+  const setErr=(el,ok,msg)=>{el.classList.toggle("bad",!ok);const er=el.parentElement.querySelector(".err");if(er)er.textContent=ok?"":msg};
+  f.onsubmit=async e=>{
+    e.preventDefault();let ok=true;
+    const v=n=>f[n].value.trim();
+    const chk=(n,good,msg)=>{setErr(f[n],good,msg);if(!good)ok=false};
+    chk("t",v("t").length>=3,"At least 3 characters");
+    chk("co",v("co").length>=2,"Enter the company name");
+    chk("loc",v("loc").length>=2,"Enter the location");
+    chk("desc",v("desc").length>=20,"Please write at least 20 characters");
+    const web=v("web");chk("web",web===""||/^https:\/\/[^\s<>"']{3,255}$/i.test(web),"Link must start with https://");
+    const link=v("link");let apply_url=null,apply_email=null;
+    if(link.includes("@")){apply_email=link;chk("link",EMAIL_RE.test(link)&&link.length<=254,"Enter a valid email")}
+    else{apply_url=link;chk("link",/^https:\/\/[^\s<>"']{3,255}$/i.test(link),"Enter an https:// link or an email")}
+    const emin=v("emin")===""?null:+v("emin"),emax=v("emax")===""?null:+v("emax");
+    chk("emin",emin===null||(Number.isInteger(emin)&&emin>=0&&emin<=60),"0 to 60");
+    chk("emax",emax===null||(Number.isInteger(emax)&&emax>=0&&emax<=60&&(emin===null||emax>=emin)),"Must be at least the minimum");
+    const dl=v("dl");chk("dl",dl===""||dl>=new Date().toISOString().slice(0,10),"Date cannot be in the past");
     if(!ok)return;
-    $("#pjForm").style.display="none";$("#pjDone").style.display="block";toast("Job submitted for approval");
+    const btn=f.querySelector("button[type=submit]");btn.disabled=true;
+    try{
+      await submitJob({submitted_by:auth.getSession().user.id,title:v("t"),company:v("co"),company_website:web||null,location:v("loc"),industry:v("ind")||null,
+        employment_type:f.type.value,work_mode:f.mode.value,salary_text:v("sal")||null,experience_min_years:emin,experience_max_years:emax,
+        description:v("desc"),responsibilities:v("resp")||null,qualifications:v("qual")||null,
+        skills:v("skills").split(",").map(x=>x.trim().slice(0,40)).filter(Boolean).slice(0,20),apply_url,apply_email,deadline:dl||null});
+      $("#pjForm").style.display="none";$("#pjDone").style.display="block";toast("Job submitted for approval");$("#pjAgain").onclick=()=>hooks.route();
+    }catch(err){setErr(f.link,false,/check constraint|violates/i.test(err.message)?"Some details are not valid. Please check the fields.":friendly(err))}
+    finally{btn.disabled=false}
   };
   $$("input,textarea",f).forEach(el=>el.addEventListener("input",()=>el.classList.remove("bad")));
 }
@@ -396,6 +479,24 @@ async function meWire(){
       <div class="full"><button class="btn btn-em" type="submit">Save profile <span>→</span></button> <span id="meMsg" role="status" style="margin-left:12px"></span></div>
     </div>
   </form>`;
+  box.insertAdjacentHTML("beforeend",`<div class="card" style="padding:28px;margin-top:22px" id="myJobsBox"><h2 style="font-size:1.3rem;margin-bottom:12px">My job listings</h2><div id="myJobs"><p>Loading…</p></div></div>`);
+  const renderMyJobs=async()=>{
+    const el=$("#myJobs");if(!el)return;
+    try{
+      const rows=await myJobs(p.id);
+      el.innerHTML=rows.length?rows.map(r=>`<div data-id="${esc(r.id)}" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;padding:12px 0;border-top:1px solid var(--line)">
+        <div><b>${esc(r.title)}</b> · ${esc(r.company)} <span class="tag" style="vertical-align:middle">${esc(({pending:"Waiting for review",approved:"Live",rejected:"Not approved",withdrawn:"Withdrawn",expired:"Expired"})[r.status]||r.status)}</span>${r.rejection_reason?`<div style="font-size:.88rem;color:var(--muted)">Reason: ${esc(r.rejection_reason)}</div>`:""}</div>
+        <div style="display:flex;gap:8px">${r.status==="approved"?`<a class="btn btn-line btn-sm" href="#job/${esc(r.id)}">View</a>`:""}${r.status==="pending"||r.status==="approved"?`<button class="btn btn-line btn-sm" data-jact="withdraw">Withdraw</button>`:""}${["pending","rejected","withdrawn"].includes(r.status)?`<button class="btn btn-line btn-sm" data-jact="delete">Delete</button>`:""}</div></div>`).join(""):`<p>You have not posted any jobs. <a class="more" href="#post-job">Post a job</a></p>`;
+    }catch(err){el.innerHTML=`<p>${esc(friendly(err))}</p>`}
+  };
+  renderMyJobs();
+  $("#myJobsBox").onclick=async e=>{
+    const b=e.target.closest("[data-jact]");if(!b)return;const id=b.closest("[data-id]").dataset.id;if(!isId(id))return;
+    const run=async()=>{try{if(b.dataset.jact==="withdraw"){await withdrawJob(id);toast("Listing withdrawn")}else{await deleteJob(id);toast("Listing deleted")}renderMyJobs()}catch(err){toast(friendly(err))}};
+    if(b.dataset.jact==="withdraw"){run();return}
+    openModal(`<h2 style="font-size:1.35rem">Delete this listing?</h2><p style="margin-top:10px">This cannot be undone.</p><div style="display:flex;gap:10px;margin-top:18px"><button class="btn btn-em" id="dlYes">Delete</button><button class="btn btn-line" id="dlNo">Keep it</button></div>`);
+    $("#dlNo").onclick=closeModal;$("#dlYes").onclick=()=>{closeModal();run()};
+  };
   const f=$("#fMe");
   $("#avFile").onchange=async e=>{
     const file=e.target.files[0];if(!file)return;const msg=$("#avMsg");
@@ -442,50 +543,77 @@ async function meWire(){
   };
 }
 
-/* administrator: verify alumni */
+/* administrator: verify alumni, review jobs, handle reports */
 async function adminWire(){
   const box=$("#adBox");if(!box)return;
   if(!auth.getSession()){box.innerHTML=`<p>Please <a class="more" href="#login">sign in</a> as an administrator.</p>`;return}
   if(!S.isAdmin){box.innerHTML=`<p>This page is for administrators only.</p>`;return}
-  let tab="pending";
-  const TABS=[["pending","Waiting"],["verified","Verified"],["rejected","Rejected"],["suspended","Suspended"],["all","Everyone"]];
-  const shell=()=>{box.innerHTML=`<div class="chips" id="adTabs" style="margin-bottom:18px">${TABS.map(t=>`<button class="chip ${t[0]===tab?"on":""}" data-t="${t[0]}">${t[1]}</button>`).join("")}</div><div id="adList"><p>Loading…</p></div>`};
-  const load=async()=>{
-    const list=$("#adList");
-    try{
+  let sec="members",tab="pending";
+  const SECTIONS=[["members","Alumni"],["jobs","Jobs"],["reports","Reports"]];
+  const TABS={members:[["pending","Waiting"],["verified","Verified"],["rejected","Rejected"],["suspended","Suspended"],["all","Everyone"]],
+              jobs:[["pending","Waiting"],["approved","Live"],["rejected","Not approved"],["all","Everyone"]],reports:[]};
+  const shell=()=>{box.innerHTML=`<div class="chips" id="adSecs" style="margin-bottom:12px">${SECTIONS.map(t=>`<button class="chip ${t[0]===sec?"on":""}" data-s="${t[0]}">${t[1]}</button>`).join("")}</div>
+    ${TABS[sec].length?`<div class="chips" id="adTabs" style="margin-bottom:18px">${TABS[sec].map(t=>`<button class="chip ${t[0]===tab?"on":""}" data-t="${t[0]}">${t[1]}</button>`).join("")}</div>`:""}<div id="adList"><p>Loading…</p></div>`};
+  const day=d=>esc(new Date(d).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}));
+  const btns=a=>a.filter(Boolean).map(x=>`<button class="btn ${x[2]||"btn-line"} btn-sm" data-act="${x[0]}">${x[1]}</button>`).join("");
+  const row=(id,head,sub,meta,actions,extra="")=>`<article class="card" style="padding:20px 24px;margin-bottom:14px" data-id="${esc(id)}" ${extra}><div style="display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start"><div style="min-width:0;flex:1 1 320px">${head}<div style="color:var(--muted);font-size:.9rem;margin-top:4px;word-break:break-word">${sub}</div><div style="color:var(--muted);font-size:.82rem;margin-top:2px">${meta}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap">${actions}</div></div></article>`;
+
+  const loaders={
+    async members(list){
       const rows=await db.rpc("admin_list_members",{p_status:tab==="all"?null:tab});
-      if(!$("#adList"))return;
-      if(!rows.length){list.innerHTML=`<p>${tab==="pending"?"Nobody is waiting for verification.":"Nobody here."}</p>`;return}
-      list.innerHTML=rows.map(r=>`<article class="card" style="padding:20px 24px;margin-bottom:14px" data-id="${esc(r.id)}">
-        <div style="display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start">
-          <div><h3 style="font-size:1.1rem">${esc(r.full_name||"(no name)")} <span class="tag" style="vertical-align:middle">${esc(r.verification_status)}</span></h3>
-            <div style="color:var(--muted);font-size:.9rem;margin-top:4px">${esc(r.email)} · Batch ${esc(r.graduation_year??"?")} · Enrolment: ${esc(r.enrollment_no||"not given")}${r.current_company?" · "+esc(r.current_company):""}${r.city?" · "+esc(r.city):""}</div>
-            <div style="color:var(--muted);font-size:.82rem;margin-top:2px">Registered ${esc(new Date(r.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}))}${r.verification_note?` · Note: ${esc(r.verification_note)}`:""}</div></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            ${r.verification_status!=="verified"?`<button class="btn btn-em btn-sm" data-act="verified">${r.verification_status==="suspended"?"Reinstate":"Verify"}</button>`:""}
-            ${r.verification_status==="pending"||r.verification_status==="verified"?`<button class="btn btn-line btn-sm" data-act="rejected">Reject</button>`:""}
-            ${r.verification_status==="verified"?`<button class="btn btn-line btn-sm" data-act="suspended">Suspend</button>`:""}
-          </div></div></article>`).join("");
-    }catch(err){list.innerHTML=`<p>${esc(friendly(err))}</p>`}
+      list.innerHTML=rows.length?rows.map(r=>row(r.id,`<h3 style="font-size:1.1rem">${esc(r.full_name||"(no name)")} <span class="tag" style="vertical-align:middle">${esc(r.verification_status)}</span></h3>`,
+        `${esc(r.email)} · Batch ${esc(r.graduation_year??"?")} · Enrolment: ${esc(r.enrollment_no||"not given")}${r.current_company?" · "+esc(r.current_company):""}${r.city?" · "+esc(r.city):""}`,
+        `Registered ${day(r.created_at)}${r.verification_note?` · Note: ${esc(r.verification_note)}`:""}`,
+        btns([r.verification_status!=="verified"?["verified",r.verification_status==="suspended"?"Reinstate":"Verify","btn-em"]:null,
+              ["pending","verified"].includes(r.verification_status)?["rejected","Reject"]:null,r.verification_status==="verified"?["suspended","Suspend"]:null]))).join(""):`<p>${tab==="pending"?"Nobody is waiting for verification.":"Nobody here."}</p>`;
+    },
+    async jobs(list){
+      const rows=await db.select("jobs","*",{...(tab==="all"?{}:{status:"eq."+tab}),order:"created_at.desc",limit:"200"});
+      const ids=[...new Set(rows.map(r=>r.submitted_by))];
+      const names={};if(ids.length)(await db.select("profiles","id,full_name",{id:"in.("+ids.join(",")+")"})).forEach(p=>names[p.id]=p.full_name);
+      list.innerHTML=rows.length?rows.map(r=>row(r.id,`<h3 style="font-size:1.1rem">${esc(r.title)} <span class="tag" style="vertical-align:middle">${esc(r.status)}</span>${r.featured?' <span class="tag g">Featured</span>':""}</h3>`,
+        `${esc(r.company)} · ${esc(r.location)} · ${esc(TYPE[r.employment_type]||"")} · Apply: ${esc(r.apply_url||r.apply_email||"")}<br><span style="white-space:pre-line">${esc(r.description.slice(0,400))}${r.description.length>400?"…":""}</span>`,
+        `Posted by ${esc(names[r.submitted_by]||"unknown")} on ${day(r.created_at)}${r.rejection_reason?` · Reason: ${esc(r.rejection_reason)}`:""}`,
+        btns([r.status!=="approved"?["approved","Approve","btn-em"]:null,["pending","approved"].includes(r.status)?["rejected",r.status==="approved"?"Take down":"Reject"]:null,
+              r.status==="approved"?[r.featured?"unfeature":"feature",r.featured?"Unfeature":"Feature"]:null]))).join(""):`<p>${tab==="pending"?"No jobs are waiting for review.":"Nothing here."}</p>`;
+    },
+    async reports(list){
+      const rows=await db.select("content_reports","*",{status:"eq.open",order:"created_at.desc",limit:"100"});
+      const ids=[...new Set(rows.map(r=>r.entity_id))];
+      const jobs={};if(ids.length)(await db.select("jobs","id,title,company,status",{id:"in.("+ids.join(",")+")"})).forEach(j=>jobs[j.id]=j);
+      list.innerHTML=rows.length?rows.map(r=>{const j=jobs[r.entity_id];return row(r.id,`<h3 style="font-size:1.1rem">Report on ${j?esc(j.title)+" · "+esc(j.company):"a removed listing"}</h3>`,`“${esc(r.reason)}”`,`Reported ${day(r.created_at)}${j?` · Listing is ${esc(j.status)}`:""}`,
+        btns([j&&j.status==="approved"?["takedown","Take down listing","btn-em"]:null,["dismiss","Dismiss report"]]),`data-job="${esc(r.entity_id)}"`)}).join(""):`<p>No open reports.</p>`;
+    }
   };
+  const load=async()=>{const list=$("#adList");if(!list)return;try{await loaders[sec](list)}catch(err){list.innerHTML=`<p>${esc(friendly(err))}</p>`}};
   shell();load();
+
+  const doIt=async(act,id,jobId,note)=>{
+    if(sec==="members")return db.update("profiles",{id:"eq."+id},{verification_status:act,verification_note:note||null});
+    if(sec==="jobs"){
+      if(act==="feature"||act==="unfeature")return db.update("jobs",{id:"eq."+id},{featured:act==="feature"});
+      return db.update("jobs",{id:"eq."+id},{status:act,rejection_reason:act==="rejected"?note:null});
+    }
+    if(act==="dismiss")return db.update("content_reports",{id:"eq."+id},{status:"dismissed"});
+    await db.update("jobs",{id:"eq."+jobId},{status:"rejected",rejection_reason:note});
+    return db.update("content_reports",{id:"eq."+id},{status:"resolved"});
+  };
   box.onclick=e=>{
-    const t=e.target.closest("[data-t]");
-    if(t){tab=t.dataset.t;shell();load();return}
+    const sb=e.target.closest("[data-s]");if(sb){sec=sb.dataset.s;tab=TABS[sec][0]?TABS[sec][0][0]:"";shell();load();return}
+    const t=e.target.closest("[data-t]");if(t){tab=t.dataset.t;shell();load();return}
     const b=e.target.closest("[data-act]");if(!b)return;
-    const id=b.closest("[data-id]").dataset.id,act=b.dataset.act;
-    if(!isId(id))return;
-    const need=act!=="verified";
-    openModal(`<h2 style="font-size:1.35rem">${act==="verified"?"Verify this alumnus?":act==="rejected"?"Reject this registration":"Suspend this account"}</h2>
+    const card=b.closest("[data-id]"),id=card.dataset.id,jobId=card.dataset.job,act=b.dataset.act;
+    if(!isId(id)||(jobId&&!isId(jobId)))return;
+    const quick=["feature","unfeature","dismiss"].includes(act);
+    const run=async note=>{try{await doIt(act,id,jobId,note);closeModal();toast("Updated");load()}catch(err){const el=$("#adErr");if(el)el.textContent=friendly(err);else toast(friendly(err))}};
+    if(quick){run("");return}
+    const need=["rejected","suspended","takedown"].includes(act)&&!(sec==="members"&&act==="verified");
+    const titles={verified:"Verify this alumnus?",rejected:"Reject",suspended:"Suspend this account",approved:"Approve this job?",pending:"Return to review?",takedown:"Take this listing down"};
+    openModal(`<h2 style="font-size:1.35rem">${esc(titles[act]||"Confirm")}</h2>
       <form id="adForm" style="margin-top:14px"><label for="adNote">${need?"Reason (the member will see this) *":"Note (optional)"}</label><textarea class="field" id="adNote" rows="3" maxlength="500"></textarea><div class="err" id="adErr"></div>
       <div style="display:flex;gap:10px;margin-top:16px"><button class="btn btn-em" type="submit">Confirm</button><button class="btn btn-line" type="button" id="adCancel">Cancel</button></div></form>`);
     $("#adCancel").onclick=closeModal;
-    $("#adForm").onsubmit=async ev=>{
-      ev.preventDefault();const note=$("#adNote").value.trim();
-      if(need&&note.length<3){$("#adErr").textContent="Please give a short reason.";return}
-      try{await db.update("profiles",{id:"eq."+id},{verification_status:act,verification_note:note||null});closeModal();toast("Updated");load()}
-      catch(err){$("#adErr").textContent=friendly(err)}
-    };
+    $("#adForm").onsubmit=ev=>{ev.preventDefault();const note=$("#adNote").value.trim();if(need&&note.length<3){$("#adErr").textContent="Please give a short reason.";return}run(note)};
   };
 }
 

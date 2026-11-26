@@ -104,3 +104,11 @@ Authentication, email delivery, RLS/permissions, storage, moderation, admin, rea
 - `tests/smoke.cjs`: 74/74. `tests/auth.e2e.cjs`: 32/32.
 - Still sample content (replaced in Phases 4-7): home stories/news/jobs/events and the jobs/events/news pages. The site is marked `noindex` until launch.
 - **Not yet verified on the real service:** sign-up/sign-in, photo upload, admin actions (needs the owner's account; see docs/auth-setup.md).
+
+## Phase 4 (job portal)
+- `tests/jobs.e2e.cjs`: 43/43 pass (4 consecutive runs), real browser against a **mock** Supabase: browse/filter/search, hostile text escaped, job page, safe apply links,
+  email-only listings hidden from anonymous visitors, posting (validation, `javascript:` links refused, exact fields sent, no status/featured ever sent), unverified and signed-out blocked,
+  "My job listings" (withdraw, confirmed delete), reporting (needs a reason, duplicate message), admin approve / reject-with-reason / feature / take down via report.
+- `tests/smoke.cjs`: 80/80, `auth.e2e`: 32/32, `members.e2e`: 32/32, database: 147/147.
+- The rules that matter most (members cannot approve or feature their own job, edits go back to review, apply email hidden from anonymous visitors) are enforced and tested in the database itself.
+- **Not yet verified on the real service** (needs a real account on the live site).

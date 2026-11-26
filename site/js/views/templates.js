@@ -87,12 +87,10 @@ V.home=()=>`
   </div>
 </section>
 
-<section class="sec">
+<section class="sec" id="homeJobsSec" style="display:none">
   <div class="wrap">
     <div class="sec-h reveal"><div><div class="kicker">Career opportunities</div><h2>Latest openings from alumni</h2></div><a href="#jobs" class="btn btn-line btn-sm">Browse all jobs <span>→</span></a></div>
-    <div class="grid g2">
-      ${JOBS.slice(0,4).map((j,i)=>`<article class="card jobrow reveal d${i%2}"><div class="logo-b pic" style="background-image:url('${U(j.img,300)}')" role="img" aria-label="${esc(j.co)}">${esc(ini(j.co))}</div><div><span class="tag ${j.type==='Internship'?'':'n'}">${esc(j.type)}</span><h3 style="margin-top:10px">${esc(j.t)}</h3><div class="sub"><span>${esc(j.co)}</span><span>📍 ${esc(j.loc)}</span></div></div><a class="btn btn-em btn-sm" href="#job/${j.id}">Apply now</a></article>`).join("")}
-    </div>
+    <div class="grid g2" id="homeJobs"></div>
   </div>
 </section>
 
@@ -269,20 +267,20 @@ ${phero("Alumni Network","Discover your alumni network","Find batchmates, mentor
 V.profile=()=>`<section class="sec" style="padding:0"><div id="proBox"><div class="wrap" style="padding:90px 0"><p>Loading profile…</p></div></div></section>`;
 
 V.jobs=()=>`
-${phero("Job Portal","Build your next career move","Openings shared by alumni, for alumni","Search by role, company or city, and filter by industry, type, experience and date posted.","photo-1521737604893-d14cc237f11d",[[JOBS.length,"Live openings"],[new Set(JOBS.map(j=>j.co)).size,"Employers"]])}
+${phero("Job Portal","Build your next career move","Openings shared by alumni, for alumni","Search by role, company or city, and filter by industry, type, experience and date posted.","photo-1521737604893-d14cc237f11d",[])}
 <section class="sec">
   <div class="wrap">
     <div class="bar reveal">
       <input class="field" id="jq" placeholder="Job title, company or city" aria-label="Search jobs">
-      <select class="field" id="ji" aria-label="Industry"><option value="">Industry</option>${[...new Set(JOBS.map(j=>j.ind))].map(x=>`<option>${x}</option>`).join("")}</select>
-      <select class="field" id="jt" aria-label="Employment type"><option value="">Employment type</option><option>Full-time</option><option>Internship</option><option>Contract</option></select>
-      <select class="field" id="je" aria-label="Experience"><option value="">Experience</option><option>Students</option><option>0–2 years</option><option>1–3 years</option><option>3+ years</option></select>
+      <select class="field" id="ji" aria-label="Industry"><option value="">Industry</option></select>
+      <select class="field" id="jt" aria-label="Employment type"><option value="">Employment type</option><option value="full_time">Full-time</option><option value="part_time">Part-time</option><option value="internship">Internship</option><option value="contract">Contract</option><option value="apprenticeship">Apprenticeship</option></select>
+      <select class="field" id="je" aria-label="Experience"><option value="">Experience</option><option value="fresher">Freshers / students</option><option value="1-3">1–3 years</option><option value="3+">3+ years</option></select>
       <select class="field" id="jd" aria-label="Date posted"><option value="">Date posted</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select>
       <a href="#post-job" class="btn btn-navy" style="white-space:nowrap">Post a job <span>+</span></a>
     </div>
     <div class="bar2"><div class="chips" id="jchips"></div><span class="count" id="jct"></span></div>
     <div class="grid g2" id="jList"></div>
-    <div class="empty" id="jEmpty"><h3>No openings match</h3><p>Adjust filters to see more roles.</p></div>
+    <div class="empty" id="jEmpty"><h3>No openings to show</h3><p id="jEmptyMsg">Adjust filters to see more roles.</p></div>
     <div class="sec-h" style="margin-top:80px"><div><div class="kicker">Career resources</div><h2>Prepare and grow</h2></div></div>
     <div class="grid g3">
       ${[["Resume templates","Engineering CVs that get shortlisted.","M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6"],["Interview prep","Common site and design interview questions.","M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"],["Exam guides","Government engineering exam roadmaps.","M4 19.5A2.5 2.5 0 016.5 17H20V3H6.5A2.5 2.5 0 004 5.5v14z"]].map((r,i)=>`<div class="card reveal d${i}"><div class="ic">${svg(r[2],24)}</div><h3 style="margin-top:18px">${r[0]}</h3><p style="font-size:.93rem;margin:8px 0 16px">${r[1]}</p><a class="more" href="#contact" onclick="return false" style="margin-top:auto">Open guide <span>→</span></a></div>`).join("")}
@@ -296,47 +294,7 @@ ${phero("Job Portal","Build your next career move","Openings shared by alumni, f
   </div>
 </section>`;
 
-V.job=(id)=>{
-  const j=JOBS.find(x=>x.id===id); if(!j) return notFound("Job not found","This listing may have expired.");
-  const similar=JOBS.filter(x=>x.id!==j.id&&(x.ind===j.ind||x.type===j.type)).slice(0,3);
-  const applied=!!S.apply[j.id];
-  const f=dt(j.dl);
-  return `
-  <section class="phero" style="min-height:320px"><div class="bg" style="background-image:url('${U(j.img,2000)}')"></div>
-    <div class="wrap"><div class="phero-copy"><div class="crumb"><a href="#jobs">Job portal</a><span>/</span>Job details</div><span class="tag">${esc(j.type)}</span><h1 style="margin-top:14px">${esc(j.t)}</h1><p>${esc(j.co)} · ${esc(j.loc)} · ${esc(j.mode)}</p></div>
-    <div class="mini-stats"><div><b>${esc(j.exp.split(" ")[0])}</b><small>Experience</small></div><div><b>${f.day}</b><small>${f.mon} deadline</small></div></div></div>
-  </section>
-  <section class="sec">
-    <div class="wrap jd">
-      <div class="reveal">
-        <div class="facts">
-          <div class="fact"><small>Salary</small><b>${esc(j.sal)}</b></div>
-          <div class="fact"><small>Employment</small><b>${esc(j.type)}</b></div>
-          <div class="fact"><small>Experience</small><b>${esc(j.exp)}</b></div>
-          <div class="fact"><small>Posted</small><b>${dt(j.posted).short}</b></div>
-        </div>
-        <div class="card" style="padding:32px"><div class="kicker">Description</div><p>${esc(j.desc)}</p>
-          <h3>Responsibilities</h3><ul>${j.resp.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
-          <h3>Qualifications</h3><ul>${j.qual.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
-          <h3>Skills</h3><div class="pill-list">${j.skills.map(s=>`<span>${esc(s)}</span>`).join("")}</div>
-        </div>
-        <div class="card" style="padding:30px;margin-top:22px;flex-direction:row;gap:18px;align-items:center"><div class="logo-b pic" style="width:70px;height:70px;background-image:url('${U(j.img,300)}')">${esc(ini(j.co))}</div><div><small style="color:var(--muted);font-weight:700">About the employer</small><h3>${esc(j.co)}</h3><p style="font-size:.92rem">Posted by an alumni member of the network.</p></div></div>
-      </div>
-      <aside class="side reveal d1">
-        <div class="card" style="padding:28px">
-          <div class="kicker">Application</div>
-          <div style="margin-bottom:14px;color:var(--muted);font-size:.9rem">Deadline: <b style="color:var(--navy)">${f.full}</b></div>
-          <div class="track" id="track"><div class="on">Applied</div><div>Review</div><div>Interview</div></div>
-          <div class="pri" style="margin-top:22px">
-            <button class="btn ${applied?'done':'btn-em'}" id="applyBtn" ${applied?'disabled':''}>${applied?'Application sent ✓':'Apply now'}</button>
-            <a class="btn btn-line" href="#jobs">Back to jobs</a>
-          </div>
-        </div>
-      </aside>
-    </div>
-    ${similar.length?`<div class="wrap" style="margin-top:70px"><div class="sec-h"><div><div class="kicker">Similar</div><h2>More opportunities</h2></div></div><div class="grid g3">${similar.map(s=>`<article class="card jobrow" style="grid-template-columns:1fr"><div class="ov" style="height:130px;border-radius:14px;margin-bottom:6px"><div class="bg" style="background-image:url('${U(s.img,600)}')"></div></div><span class="tag n" style="align-self:flex-start">${esc(s.type)}</span><h3>${esc(s.t)}</h3><div class="sub" style="color:var(--muted);font-size:.88rem">${esc(s.co)} · ${esc(s.loc)}</div><a class="more" style="margin-top:16px" href="#job/${s.id}">View role <span>→</span></a></article>`).join("")}</div></div>`:""}
-  </section>`;
-};
+V.job=()=>`<div id="jobBox"><section class="sec"><div class="wrap" style="padding:60px 0"><p>Loading…</p></div></section></div>`;
 
 V["post-job"]=()=>`
 ${phero("Post a Job","Share an opportunity with fellow alumni","Login required. Submissions are reviewed by the alumni cell before going live.","","photo-1497366216548-37526070297c",[])}
@@ -345,30 +303,34 @@ ${phero("Post a Job","Share an opportunity with fellow alumni","Login required. 
     <div class="reveal">
       <div class="card" style="padding:32px"><div class="kicker">How it works</div>
         <div class="track" id="ptrack" style="margin-top:22px"><div class="on">Submit</div><div>Admin review</div><div>Live</div></div>
-        <p style="margin-top:20px;font-size:.93rem">Once submitted, your listing shows the status of approval on your dashboard.</p>
+        <p style="margin-top:20px;font-size:.93rem">After you submit, the alumni cell reviews the listing. You can follow its status under My profile → My job listings. Editing a live listing sends it back for review.</p>
       </div>
     </div>
     <div class="reveal d1" style="background:#fff;border:1px solid var(--line);border-radius:26px;padding:36px;box-shadow:var(--sh)">
       <div id="pjForm">
         <form id="pj" novalidate>
           <div class="g-form">
-            <div class="full"><label for="pj_t">Job title *</label><input class="field" id="pj_t" name="t"><div class="err"></div></div>
-            <div><label for="pj_co">Company name *</label><input class="field" id="pj_co" name="co"><div class="err"></div></div>
-            <div><label for="pj_web">Company website</label><input class="field" id="pj_web" name="web" placeholder="https://"></div>
-            <div><label for="pj_loc">Location *</label><input class="field" id="pj_loc" name="loc"><div class="err"></div></div>
-            <div><label for="pj_type">Employment type</label><select class="field" id="pj_type" name="type"><option>Full-time</option><option>Internship</option><option>Contract</option></select></div>
-            <div><label for="pj_mode">Work mode</label><select class="field" id="pj_mode" name="mode"><option>On-site</option><option>Hybrid</option><option>Remote</option></select></div>
-            <div><label for="pj_sal">Salary range</label><input class="field" id="pj_sal" name="sal" placeholder="e.g. ₹3–4 LPA"></div>
-            <div><label for="pj_exp">Experience required</label><input class="field" id="pj_exp" name="exp" placeholder="e.g. 1–3 years"></div>
-            <div class="full"><label for="pj_desc">Job description *</label><textarea class="field" id="pj_desc" name="desc" rows="4"></textarea><div class="err"></div></div>
+            <div class="full"><label for="pj_t">Job title *</label><input class="field" id="pj_t" name="t" maxlength="150"><div class="err"></div></div>
+            <div><label for="pj_co">Company name *</label><input class="field" id="pj_co" name="co" maxlength="120"><div class="err"></div></div>
+            <div><label for="pj_web">Company website</label><input class="field" id="pj_web" name="web" placeholder="https://"><div class="err"></div></div>
+            <div><label for="pj_loc">Location *</label><input class="field" id="pj_loc" name="loc" maxlength="120"><div class="err"></div></div>
+            <div><label for="pj_ind">Industry</label><input class="field" id="pj_ind" name="ind" maxlength="80" placeholder="e.g. Construction"></div>
+            <div><label for="pj_type">Employment type</label><select class="field" id="pj_type" name="type"><option value="full_time">Full-time</option><option value="part_time">Part-time</option><option value="internship">Internship</option><option value="contract">Contract</option><option value="apprenticeship">Apprenticeship</option></select></div>
+            <div><label for="pj_mode">Work mode</label><select class="field" id="pj_mode" name="mode"><option value="on_site">On-site</option><option value="hybrid">Hybrid</option><option value="remote">Remote</option></select></div>
+            <div><label for="pj_sal">Salary</label><input class="field" id="pj_sal" name="sal" maxlength="60" placeholder="e.g. ₹3–4 LPA"></div>
+            <div><label for="pj_emin">Experience: minimum years</label><input class="field" id="pj_emin" name="emin" type="number" min="0" max="60"><div class="err"></div></div>
+            <div><label for="pj_emax">Experience: maximum years</label><input class="field" id="pj_emax" name="emax" type="number" min="0" max="60"><div class="err"></div></div>
+            <div class="full"><label for="pj_desc">Job description * <small style="color:var(--muted)">(at least 20 characters)</small></label><textarea class="field" id="pj_desc" name="desc" rows="4" maxlength="8000"></textarea><div class="err"></div></div>
+            <div class="full"><label for="pj_resp">Responsibilities <small style="color:var(--muted)">(one per line)</small></label><textarea class="field" id="pj_resp" name="resp" rows="3" maxlength="4000"></textarea></div>
+            <div class="full"><label for="pj_qual">Qualifications <small style="color:var(--muted)">(one per line)</small></label><textarea class="field" id="pj_qual" name="qual" rows="3" maxlength="4000"></textarea></div>
             <div class="full"><label for="pj_skills">Skills required</label><input class="field" id="pj_skills" name="skills" placeholder="Comma-separated"></div>
-            <div><label for="pj_link">Application link or email *</label><input class="field" id="pj_link" name="link"><div class="err"></div></div>
-            <div><label for="pj_dl">Deadline</label><input class="field" id="pj_dl" type="date" name="dl"></div>
-            <div class="full"><button class="btn btn-em" type="submit" style="width:100%">Submit job <span>→</span></button></div>
+            <div><label for="pj_link">How to apply: link (https://…) or email *</label><input class="field" id="pj_link" name="link" maxlength="254"><div class="err"></div></div>
+            <div><label for="pj_dl">Last date to apply</label><input class="field" id="pj_dl" type="date" name="dl"><div class="err"></div></div>
+            <div class="full"><button class="btn btn-em" type="submit" style="width:100%">Submit for approval <span>→</span></button></div>
           </div>
         </form>
       </div>
-      <div id="pjDone" style="display:none;text-align:center;padding:20px 0"><div class="done-ico">✓</div><h2 style="font-size:1.6rem">Submitted for approval</h2><p style="margin:10px 0 24px">The alumni cell will review and publish your listing shortly.</p><div class="track" style="margin-bottom:26px"><div class="on">Submitted</div><div>Admin review</div><div>Live</div></div><a href="#jobs" class="btn btn-line">Back to jobs</a></div>
+      <div id="pjDone" style="display:none;text-align:center;padding:20px 0"><div class="done-ico">✓</div><h2 style="font-size:1.6rem">Submitted for approval</h2><p style="margin:10px 0 24px">The alumni cell will review and publish your listing shortly.</p><div class="track" style="margin-bottom:26px"><div class="on">Submitted</div><div>Admin review</div><div>Live</div></div><div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button type="button" class="btn btn-em" id="pjAgain">Post another job</button><a href="#me" class="btn btn-line">My job listings</a><a href="#jobs" class="btn btn-line">Back to jobs</a></div></div>
     </div>
   </div>
 </section>`;

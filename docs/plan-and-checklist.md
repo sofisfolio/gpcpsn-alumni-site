@@ -42,3 +42,9 @@ Legend: [x] done and verified, [~] partly, [ ] not started, [!] needs the owner.
 ## Launch reminders
 - [ ] Remove `<meta name="robots" content="noindex, nofollow">` from `site/index.html` and set `DEV_BANNER=false` in `site/js/config.js` once every page uses real data (after Phase 7).
 - [ ] Turn Confirm email back ON after custom email sending is set up (Phase 8).
+
+## Phase 4 decisions (made on the owner's behalf)
+- Verified alumni post; an administrator approves before anything is public. Applicants apply on the employer's own link or email (no in-site application tracking).
+- Listings with a past deadline disappear automatically. Editing a live listing sends it back for review. Members can withdraw or delete their own.
+- Any verified member can report a listing; an administrator can take it down from Admin → Reports.
+- Not built yet: company logo upload for jobs (logos show the company initials).
