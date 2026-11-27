@@ -1,0 +1,29 @@
+name: Keep database awake
+# Supabase Free pauses a project after ~1 week without activity. This pings it every 2 days.
+on:
+  schedule:
+    - cron: "17 3 */2 * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ping Supabase (real query through the API)
+        env:
+          URL: https://sllpahrgmhqvchufiugf.supabase.co
+          KEY: sb_publishable_6YmqySOnX9nwPDoJh9f8-Q_TBWRXxE3
+        run: |
+          code=$(curl -s -o /tmp/out -w '%{http_code}' --retry 3 --retry-delay 10 \
+            "$URL/rest/v1/departments?select=id&limit=1" -H "apikey: $KEY")
+          echo "HTTP $code"; head -c 300 /tmp/out; echo
+          [ "$code" = "200" ]
+      - name: Monthly activity commit (stops GitHub disabling this schedule after 60 idle days)
+        run: |
+          date -u +%Y-%m > .github/last-keepalive
+          if [ -n "$(git status --porcelain .github/last-keepalive)" ]; then
+            git config user.name "keepalive-bot"; git config user.email "keepalive@users.noreply.github.com"
+            git add .github/last-keepalive && git commit -m "keepalive: $(cat .github/last-keepalive)" && git push
+          fi
